@@ -111,6 +111,18 @@ export default function App() {
   }, [categoriesByYear]);
   const timeline = useMemo(() => buildTimeline(data, categoriesByYear), [data, categoriesByYear]);
   const summary = useMemo(() => computeSummary(timeline, goal), [timeline, goal]);
+  // dữ liệu cho biểu đồ cột chồng: mỗi tháng = danh sách mục (dưới -> trên), tháng ghi đè Tổng thì không chia
+  const stacks = useMemo(
+    () =>
+      timeline.months.map(({ year: y, month: m }) => {
+        const md = data?.[y]?.[m];
+        if (!md || md[TOTAL_CATEGORY] !== undefined) return null;
+        return categoriesFor(categoriesByYear, y)
+          .map((c) => ({ name: c, value: Number(md[c]) || 0, color: catColor(c) }))
+          .filter((e) => e.value > 0);
+      }),
+    [timeline, data, categoriesByYear]
+  );
   const currentCategories = useMemo(() => categoriesFor(categoriesByYear, year), [categoriesByYear, year]);
   const monthTotals = useMemo(() => MONTHS.map((m) => totalFor(data, categoriesByYear, year, m)), [data, categoriesByYear, year]);
   const latestYm = summary ? { year: summary.year, month: summary.month } : { year: REAL_CURRENT_YEAR, month: REAL_CURRENT_MONTH };
@@ -590,7 +602,7 @@ export default function App() {
   );
   const ChartCard = (
     <div className="card fx-rise" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', animationDelay: '120ms' }}>
-      <Chart months={timeline.months} values={timeline.values} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
+      <Chart months={timeline.months} values={timeline.values} stacks={stacks} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
     </div>
   );
   const DetailCard = (

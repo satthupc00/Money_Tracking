@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 106 418 418">
+  <title>Mon Money Tracking</title>
+  <!-- cột trái -->
+  <path d="M107 210 L150 188 L205 207 L160 228 Z" fill="#5C7198"/>
+  <path d="M107 210 L160 228 L160 472 L107 454 Z" fill="#46597D"/>
+  <path d="M160 228 L205 207 L205 452 L160 472 Z" fill="#33425F"/>
+  <!-- cột giữa (cao nhất, phía sau tia sét) -->
+  <path d="M222 148 L266 126 L330 146 L276 167 Z" fill="#5C7198"/>
+  <path d="M222 148 L276 167 L276 472 L222 454 Z" fill="#46597D"/>
+  <path d="M276 167 L330 146 L330 452 L276 472 Z" fill="#33425F"/>
+  <!-- cột phải -->
+  <path d="M360 210 L408 188 L462 207 L412 230 Z" fill="#5C7198"/>
+  <path d="M360 210 L412 230 L412 472 L360 454 Z" fill="#46597D"/>
+  <path d="M412 230 L462 207 L462 452 L412 472 Z" fill="#33425F"/>
+  <path d="M302 122 L422 122 L348 266 L406 266 L218 516 L260 346 L194 346 Z" fill="#E5383B"/>
+  <!-- mặt sáng / mặt tối của tia sét -->
+  <path d="M362 122 L422 122 L348 266 L300 266 Z" fill="#FF6A5C"/>
+  <path d="M300 290 L406 266 L218 516 Z" fill="#FF5A4D"/>
+  <path d="M194 346 L260 346 L300 290 L232 300 Z" fill="#C42529"/>
+</svg>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { formatShort } from '../finance.js';
-import { lsGetJSON, lsSet } from '../platform.js';
+import { LineChart, BarChart3, Layers } from 'lucide-react';
+import { lsGet, lsGetJSON, lsSet } from '../platform.js';
 
 // ---- Hằng số biểu đồ (giữ nguyên cảm giác zoom/kéo của bản cũ) ----
 const CHART_VIEW_STORAGE_KEY = 'finance-tracker-chart-view-v1';
@@ -48,10 +49,22 @@ const RANGES = [
   { key: 'all', label: 'Tất cả', pcLabel: 'Tất cả', months: 0 },
 ];
 
-export default function Chart({ months, values, goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
+// 3 kiểu xem: đường, cột (tổng mỗi tháng), cột chồng (chia màu theo từng mục)
+const MODES = [
+  { key: 'line', Icon: LineChart, label: 'Đường' },
+  { key: 'bar', Icon: BarChart3, label: 'Cột' },
+  { key: 'stack', Icon: Layers, label: 'Cột chồng theo mục' },
+];
+
+export default function Chart({ months, values, stacks = null, goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
+  const [mode, setMode] = useState(() => {
+    const m = lsGet('mmt-chart-mode');
+    return MODES.some((x) => x.key === m) ? m : 'line';
+  });
+  useEffect(() => lsSet('mmt-chart-mode', mode), [mode]);
+  const isBar = mode !== 'line';
   const padT = 26;
   const padB = 46; // chỗ cho nhãn tháng + nhãn năm dưới trục hoành
-  const innerPadX = 14;
   const N = months.length;
   const maxScaleX = Math.max(1, N / 3); // zoom vào tối đa còn ~3 tháng
 
@@ -117,7 +130,8 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
   const maxVal = Math.max(...values, 1);
   const minVal = Math.min(...values.filter((v) => v > 0), maxVal);
   const rawChartMax = maxVal * 1.15;
-  const rawChartMin = hasAnyData ? Math.max(0, minVal * 0.85) : 0;
+  // biểu đồ cột luôn tính từ 0 để chiều cao cột phản ánh đúng giá trị
+  const rawChartMin = hasAnyData && !isBar ? Math.max(0, minVal * 0.85) : 0;
   const tickStep = pickNiceStep(Math.max(1, rawChartMax - rawChartMin), 8);
   const chartMax = Math.max(tickStep, Math.ceil(rawChartMax / tickStep) * tickStep);
   let chartMin = Math.floor(rawChartMin / tickStep) * tickStep;
@@ -144,6 +158,9 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
   );
 
   const effectiveWidth = plotWidth * scaleX;
+  const step0 = Math.max(1, effectiveWidth - 28) / Math.max(1, N - 1);
+  const barW = Math.max(3, Math.min(44, step0 * 0.62));
+  const innerPadX = isBar ? Math.max(14, barW / 2 + 4) : 14; // chừa chỗ để cột đầu/cuối không bị cắt
   const usableWidth = Math.max(1, effectiveWidth - innerPadX * 2);
   const fullRangeY = Math.max(1, chartMax - chartMin);
   const viewRangeY = fullRangeY / scaleY;
@@ -522,7 +539,14 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
   return (
     <div className="chart-wrap">
       <div className="card-h">
-        <span>{title}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        <div className="seg" style={{ marginLeft: 'auto' }}>
+          {MODES.map((m) => (
+            <button key={m.key} className={mode === m.key ? 'on' : ''} onClick={() => setMode(m.key)} title={'Kiểu ' + m.label.toLowerCase()} aria-label={'Kiểu ' + m.label.toLowerCase()} style={{ padding: '3px 7px', display: 'grid', placeItems: 'center' }}>
+              <m.Icon size={15} />
+            </button>
+          ))}
+        </div>
         <div className="seg">
           {RANGES.map((r) => (
             <button key={r.key} className={activeRange === r ? 'on' : ''} onClick={() => applyRange(r)} title={`Xem ${r.pcLabel.toLowerCase()}`}>
@@ -553,6 +577,10 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
         >
           <svg width={effectiveWidth} height={plotHeightPx} className="num" style={{ transform: `translateX(${panX}px)`, transition }}>
             <defs>
+              <linearGradient id="mmtBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#F04447" />
+                <stop offset="1" stopColor="#A8262A" />
+              </linearGradient>
               <linearGradient id="mmtArea" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stopColor="#E5383B" stopOpacity=".32" />
                 <stop offset="1" stopColor="#E5383B" stopOpacity="0" />
@@ -564,7 +592,7 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
             {yearBoundaryX.map((x, i) => (
               <line key={i} x1={x} x2={x} y1={padT} y2={baseY} stroke="#4a4e57" strokeWidth={1.2} strokeDasharray="4 4" />
             ))}
-            {earliestPoint && (
+            {earliestPoint && !isBar && (
               <g>
                 <line x1={0} x2={effectiveWidth} y1={earliestPoint.y} y2={earliestPoint.y} stroke="#F2B84B" strokeOpacity=".55" strokeWidth={1.1} strokeDasharray="5 4" />
                 <text className="money" x={4 - panX} y={earliestPoint.y - 5} fontSize={10} fontWeight={600} fill="#F2B84B">
@@ -587,18 +615,50 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
                 </text>
               ) : null
             )}
-            {segments.map((seg, i) => (
+            {!isBar && segments.map((seg, i) => (
               <path key={'a' + i} d={`${linePath(seg)} L ${seg[seg.length - 1].x} ${baseY} L ${seg[0].x} ${baseY} Z`} fill="url(#mmtArea)" />
             ))}
-            {segments.map((seg, i) => (
+            {!isBar && segments.map((seg, i) => (
               <path key={'l' + i} d={linePath(seg)} fill="none" stroke="#E5383B" strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
             ))}
+            {isBar &&
+              points.map((p, i) => {
+                if (p.val <= 0) return null;
+                const x = p.x - barW / 2;
+                const rx = Math.min(4, barW / 4);
+                const sel = selectedIdx === i;
+                const st = mode === 'stack' && stacks && stacks[i];
+                if (!st) {
+                  return (
+                    <rect key={'b' + i} x={x} y={p.y} width={barW} height={Math.max(0, baseY - p.y)} rx={rx} fill={sel ? '#FF5A5D' : 'url(#mmtBar)'} />
+                  );
+                }
+                // cột chồng: xếp các mục từ dưới lên, tỉ lệ theo tổng của tháng
+                let acc = 0;
+                const h = Math.max(0, baseY - p.y);
+                const tot = st.reduce((a, e) => a + e.value, 0) || 1;
+                return (
+                  <g key={'s' + i} opacity={selectedIdx === null || sel ? 1 : 0.55}>
+                    <clipPath id={'cb' + i}>
+                      <rect x={x} y={p.y} width={barW} height={h} rx={rx} />
+                    </clipPath>
+                    <g clipPath={`url(#cb${i})`}>
+                      {st.map((e) => {
+                        const sh = (e.value / tot) * h;
+                        const y = baseY - acc - sh;
+                        acc += sh;
+                        return <rect key={e.name} x={x} y={y} width={barW} height={sh + 0.5} fill={e.color} />;
+                      })}
+                    </g>
+                  </g>
+                );
+              })}
             {points.map((p, i) =>
               p.val > 0 ? (
                 <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={3.4} fill="#E5383B" stroke="#26292F" strokeWidth={1.8} />
+                  {!isBar && <circle cx={p.x} cy={p.y} r={3.4} fill="#E5383B" stroke="#26292F" strokeWidth={1.8} />}
                   {visibleLabel.flags[i] && selectedIdx !== i && (
-                    <text className="money" x={visibleLabel.xs[i]} y={p.y - 12} fontSize={labelSize} fontWeight={700} fill="#E8E9EC" textAnchor="middle">
+                    <text className="money" x={visibleLabel.xs[i]} y={p.y - (isBar ? 7 : 12)} fontSize={labelSize} fontWeight={700} fill="#E8E9EC" textAnchor="middle">
                       {formatShort(p.val)}
                     </text>
                   )}
@@ -610,7 +670,7 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
             {selectedIdx !== null && points[selectedIdx] && selectedLabelInfo && (
               <g style={{ pointerEvents: 'none' }}>
                 <line x1={points[selectedIdx].x} x2={points[selectedIdx].x} y1={padT} y2={baseY} stroke="#E8E9EC" strokeOpacity=".8" strokeWidth={1.2} strokeDasharray="4 3" />
-                {points[selectedIdx].val > 0 && <circle cx={points[selectedIdx].x} cy={points[selectedIdx].y} r={5.5} fill="#E5383B" stroke="#fff" strokeWidth={2} />}
+                {points[selectedIdx].val > 0 && !isBar && <circle cx={points[selectedIdx].x} cy={points[selectedIdx].y} r={5.5} fill="#E5383B" stroke="#fff" strokeWidth={2} />}
                 <rect
                   x={selectedLabelInfo.cx - selectedLabelInfo.boxW / 2}
                   y={selectedLabelInfo.cy - selectedLabelInfo.boxH / 2}
@@ -640,6 +700,25 @@ export default function Chart({ months, values, goal = 0, invertZoom = false, ti
           </svg>
         </div>
       </div>
+      {mode === 'stack' && stacks && (() => {
+        // chú thích màu: theo tháng đang chọn, không thì tháng mới nhất có dữ liệu
+        let idx = selectedIdx !== null && stacks[selectedIdx] ? selectedIdx : -1;
+        if (idx < 0) for (let k = stacks.length - 1; k >= 0; k--) if (stacks[k] && stacks[k].length) { idx = k; break; }
+        if (idx < 0) return null;
+        const st = [...stacks[idx]].reverse();
+        return (
+          <div className="stack-legend num">
+            <span className="muted">T{months[idx].month}/{months[idx].year}:</span>
+            {st.map((e) => (
+              <span key={e.name}>
+                <i style={{ background: e.color }} />
+                {e.name}
+                {selectedIdx === idx && <b className="money"> {formatShort(e.value)}</b>}
+              </span>
+            ))}
+          </div>
+        );
+      })()}
       {pc && <div className="chart-hint">Lăn chuột: zoom ngang · Shift+lăn: zoom dọc · Kéo: di chuyển · Nhấp đúp: về 1 năm</div>}
     </div>
   );
