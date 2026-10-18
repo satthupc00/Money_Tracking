@@ -2,6 +2,13 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.0.1
+
+**Icon mới.**
+
+- Icon app mới: chiếc ví nhỏ ôm đồng xu, có mầm cây trên đầu (Android, PC và trong app).
+- Icon Android hỗ trợ biểu tượng theo chủ đề (themed icon) và nền kem nhạt.
+
 ## v2.0.0
 
 **Bản lớn: giao diện mới, chạy trên cả PC và điện thoại, đồng bộ dữ liệu.**
