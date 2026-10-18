@@ -2,6 +2,16 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.2.0
+
+**Mục Chi tiết thiết kế lại cho điện thoại.**
+
+- Công tắc **Theo tháng | Theo mục** ở đầu mục Chi tiết (app nhớ lựa chọn của bạn).
+- Theo tháng: mỗi tháng 1 thẻ có tổng, tăng/giảm so tháng trước và thanh màu cơ cấu; chạm để mở danh sách mục, bấm vào mục để sửa. Có nút "Nhập cả tháng" ngay trong thẻ.
+- Theo mục: mỗi mục có số hiện tại, thay đổi so tháng trước và biểu đồ nhỏ 12 tháng; chạm để mở lưới 12 tháng ô to và sửa từng tháng.
+- Màn trong Z Fold 7: thêm tab Chi tiết trên thanh bên, danh sách bên trái và chi tiết bên phải.
+- Bản PC giữ nguyên bảng đầy đủ 12 tháng.
+
 ## v2.1.1
 
 **Mở khoá bằng vân tay khi quay lại app.**

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Settings, RefreshCw, LineChart, Table2, PieChart, Plus, List, Download, X } from 'lucide-react';
 import Chart from './components/Chart.jsx';
 import DetailTable from './components/DetailTable.jsx';
+import DetailView from './components/DetailView.jsx';
 import LockScreen from './components/LockScreen.jsx';
 import Logo from './components/Logo.jsx';
 import { Donut, Legend, MonthPicker, CategoryHistory, mixOf } from './components/MixView.jsx';
@@ -605,6 +606,21 @@ export default function App() {
       <Chart months={timeline.months} values={timeline.values} stacks={stacks} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
     </div>
   );
+  const editRequest = (key, m) => {
+    const raw = data?.[year]?.[m]?.[key];
+    setModal({ type: 'cell', key, month: m, initial: raw !== undefined ? String(raw / UNIT_MULTIPLIER) : '' });
+  };
+  const detailProps = {
+    data,
+    year,
+    categories: currentCategories,
+    monthTotals,
+    onYear: goYear,
+    onEdit: editRequest,
+    onQuick: (ym) => setModal({ type: 'quick', ym }),
+    onManage: () => setModal({ type: 'manage' }),
+  };
+  const DetailMobile = <DetailView {...detailProps} />;
   const DetailCard = (
     <div className="card fx-rise" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '10px 0 0' }}>
       <div className="card-h" style={{ padding: '0 12px' }}>
@@ -833,7 +849,7 @@ export default function App() {
           {label}
         </button>
       );
-      const foldTab = tab === 'detail' ? 'overview' : tab;
+      const foldTab = tab;
       body = (
         <>
           {top}
@@ -844,6 +860,7 @@ export default function App() {
                 <Plus size={22} />
               </button>
               {railBtn('overview', LineChart, 'Tổng quan')}
+              {railBtn('detail', Table2, 'Chi tiết')}
               {railBtn('mix', PieChart, 'Cơ cấu')}
               <button style={{ marginTop: 'auto' }} onClick={() => setModal({ type: 'settings' })}>
                 <Settings size={20} />
@@ -852,6 +869,8 @@ export default function App() {
             </div>
             {!summary ? (
               <div className="col" style={{ gridColumn: '2 / 4' }}>{Empty}</div>
+            ) : foldTab === 'detail' ? (
+              <DetailView {...detailProps} layout="split" />
             ) : foldTab === 'mix' ? (
               <>
                 <div className="col">{MixCards.props.children[0]}</div>
@@ -867,7 +886,7 @@ export default function App() {
                   {ChartCard}
                 </div>
                 <div className="col" style={{ paddingLeft: 0 }}>
-                  {DetailCard}
+                  {DetailMobile}
                 </div>
               </>
             )}
@@ -892,7 +911,7 @@ export default function App() {
             {!summary ? (
               Empty
             ) : tab === 'detail' ? (
-              DetailCard
+              DetailMobile
             ) : tab === 'mix' ? (
               MixCards
             ) : (
