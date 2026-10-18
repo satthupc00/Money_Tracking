@@ -27,7 +27,6 @@ export default function LockScreen({ pc, mode, lockHash, pinLength, biometricEna
   const [showPw, setShowPw] = useState(false);
   const [confirm, setConfirm] = useState('');
   const pwRef = useRef(null);
-  const bioTried = useRef(false);
 
   const fail = (text) => {
     setMsg({ text, err: true });
@@ -53,24 +52,47 @@ export default function LockScreen({ pc, mode, lockHash, pinLength, biometricEna
   };
 
   // ---- Vân tay ----
+  // Điện thoại có bật vân tay: mở khoá bằng vân tay là chính, bàn phím PIN chỉ là phương án dự phòng
+  const [pinMode, setPinMode] = useState(() => pc || mode !== 'unlock' || !isNativeApp() || !biometricEnabled);
+  const bioBusy = useRef(false);
   const tryBiometric = useCallback(async () => {
-    if (!isNativeApp() || !biometricEnabled || mode !== 'unlock') return;
+    if (!isNativeApp() || !biometricEnabled || mode !== 'unlock' || bioBusy.current) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; // chưa hiện lên màn hình -> đợi
+    bioBusy.current = true;
     try {
       const { NativeBiometric } = await import('capacitor-native-biometric');
       const avail = await NativeBiometric.isAvailable();
-      if (!avail || !avail.isAvailable) return;
+      if (!avail || !avail.isAvailable) {
+        setPinMode(true); // máy không có / chưa cài vân tay -> dùng PIN
+        return;
+      }
       await NativeBiometric.verifyIdentity({ reason: 'Mở khoá Mon Money Tracking', title: 'Mở khoá', subtitle: 'Dùng vân tay của bạn', description: '' });
       leave();
     } catch (e) {
-      /* huỷ hoặc thất bại -> dùng mã PIN */
+      /* huỷ hoặc không nhận -> vẫn ở màn vân tay, chạm để thử lại hoặc chọn "Dùng mã PIN" */
+    } finally {
+      bioBusy.current = false;
     }
   }, [biometricEnabled, mode, leave]);
+  // Tự bật cảm biến khi màn khoá hiện ra, và mỗi lần quay lại app (app bị khoá lúc đang chạy nền)
   useEffect(() => {
-    if (!pc && mode === 'unlock' && !bioTried.current) {
-      bioTried.current = true;
-      tryBiometric();
+    if (pc || mode !== 'unlock' || pinMode) return;
+    const t = setTimeout(tryBiometric, 250);
+    const onVis = () => document.visibilityState === 'visible' && setTimeout(tryBiometric, 250);
+    document.addEventListener('visibilitychange', onVis);
+    let remove = null;
+    if (isNativeApp()) {
+      import('@capacitor/app')
+        .then(({ App: CapApp }) => CapApp.addListener('appStateChange', ({ isActive }) => isActive && setTimeout(tryBiometric, 250)))
+        .then((sub) => (remove = () => sub.remove()))
+        .catch(() => {});
     }
-  }, [pc, mode, tryBiometric]);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVis);
+      remove && remove();
+    };
+  }, [pc, mode, pinMode, tryBiometric]);
 
   // ---- PIN (điện thoại) ----
   const press = (d) => {
@@ -166,6 +188,24 @@ export default function LockScreen({ pc, mode, lockHash, pinLength, biometricEna
             Quên mật khẩu?
           </button>
         )}
+        <div className="credit">Created by Mondiro</div>
+      </div>
+    );
+  }
+
+  if (!pinMode) {
+    return (
+      <div className={'lock' + (leaving ? ' out' : '')}>
+        <Brand />
+        <div className="hint">Chạm cảm biến vân tay để mở khoá</div>
+        <div className="fp" style={{ marginTop: 18 }}>
+          <button onClick={tryBiometric} aria-label="Mở khoá bằng vân tay" style={{ width: 92, height: 92 }}>
+            <Fingerprint size={44} />
+          </button>
+        </div>
+        <button className="link" style={{ marginTop: 26 }} onClick={() => setPinMode(true)}>
+          Dùng mã PIN
+        </button>
         <div className="credit">Created by Mondiro</div>
       </div>
     );

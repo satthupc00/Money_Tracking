@@ -2,6 +2,13 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.1.1
+
+**Mở khoá bằng vân tay khi quay lại app.**
+
+- Mỗi lần mở lại / quay lại app, điện thoại hiện màn vân tay và tự bật cảm biến, không hiện bàn phím PIN nữa.
+- Mã PIN vẫn còn làm phương án dự phòng (nút "Dùng mã PIN") khi vân tay không nhận.
+
 ## v2.1.0
 
 **Logo mới + biểu đồ cột.**
