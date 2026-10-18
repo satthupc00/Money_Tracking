@@ -2,6 +2,15 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.1.0
+
+**Logo mới + biểu đồ cột.**
+
+- Logo mới: 3 cột tăng trưởng và tia sét đỏ (icon PC, Android, header, màn khoá).
+- Biểu đồ có 3 kiểu xem, đổi bằng nút ở góc thẻ biểu đồ: Đường, Cột, Cột chồng theo mục.
+- Kiểu Cột chồng: mỗi cột chia màu theo từng mục, có chú thích màu; chạm vào cột để xem số tiền từng mục của tháng đó.
+- App nhớ kiểu biểu đồ bạn chọn.
+
 ## v2.0.1
 
 **Icon mới.**
