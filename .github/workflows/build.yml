@@ -1,0 +1,144 @@
+name: Build & Release
+
+# Mọi lần push: build thử APK (Android) + bộ cài Windows (PC).
+# Push lên main: tạo bản phát hành vX.Y.Z trên GitHub Releases (app tự cập nhật từ đây).
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.ks.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Cài thư viện
+        run: npm ci
+
+      - name: Build giao diện (Vite)
+        run: npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: Keystore ký APK (từ GitHub Secret)
+        id: ks
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > android/app/release.keystore
+            echo "SIGNED=1" >> "$GITHUB_ENV"
+            echo "signed=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Chưa có secret ANDROID_KEYSTORE_B64 - APK sẽ ký bằng khoá debug tạm, bản sau không cài đè được"
+          fi
+
+      - name: Build APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ "$SIGNED" = "1" ]; then ./gradlew assembleRelease --stacktrace; else ./gradlew assembleDebug --stacktrace; fi
+
+      - name: Đặt tên file APK
+        run: |
+          V=$(node -p "require('./package.json').version")
+          mkdir -p out
+          APK=$(ls android/app/build/outputs/apk/*/*.apk | head -n 1)
+          cp "$APK" "out/MonMoneyTracking-$V.apk"
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*.apk
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Cài thư viện
+        run: npm ci
+
+      - name: Build bộ cài Windows
+        shell: bash
+        run: npm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+
+  release:
+    needs: [android, windows]
+    # chỉ phát hành khi APK được ký bằng keystore cố định (để các bản sau cài đè được)
+    if: github.ref == 'refs/heads/main' && needs.android.outputs.signed == '1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Đọc phiên bản + bảng thông báo
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "exists=1" >> "$GITHUB_OUTPUT"
+            echo "::notice::Bản v$V đã phát hành rồi - nhớ nâng version trong package.json để phát hành bản mới"
+          fi
+          awk -v v="## v$V" 'index($0, v)==1 {f=1; next} /^## v/ {f=0} f' RELEASE_NOTES.md > notes.md
+          [ -s notes.md ] || echo "Bản cập nhật v$V" > notes.md
+          cat notes.md
+
+      - name: Tạo bản phát hành
+        if: steps.meta.outputs.exists != '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.meta.outputs.version }}
+          name: Mon Money Tracking v${{ steps.meta.outputs.version }}
+          body_path: notes.md
+          make_latest: true
+          files: |
+            artifacts/android/*.apk
+            artifacts/windows/*.exe
+            artifacts/windows/*.blockmap
+            artifacts/windows/latest.yml

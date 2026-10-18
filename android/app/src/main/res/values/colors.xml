@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1F2126</color>
+    <color name="colorPrimaryDark">#1F2126</color>
+    <color name="colorAccent">#E5383B</color>
+    <color name="mmt_chrome">#1F2126</color>
+</resources>

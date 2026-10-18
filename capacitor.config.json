@@ -1,0 +1,6 @@
+{
+  "appId": "com.moneytracking.app",
+  "appName": "Mon Money Tracking",
+  "webDir": "dist",
+  "backgroundColor": "#1F2126"
+}
