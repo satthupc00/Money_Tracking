@@ -59,6 +59,7 @@ export default function LockScreen({ pc, mode, lockHash, pinLength, biometricEna
     if (!isNativeApp() || !biometricEnabled || mode !== 'unlock' || bioBusy.current) return;
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; // chưa hiện lên màn hình -> đợi
     bioBusy.current = true;
+    window.__mmtBioUntil = Date.now() + 60000; // hộp thoại vân tay là 1 màn hình riêng -> app bị "tạm dừng", không tính là rời app
     try {
       const { NativeBiometric } = await import('capacitor-native-biometric');
       const avail = await NativeBiometric.isAvailable();
@@ -72,23 +73,30 @@ export default function LockScreen({ pc, mode, lockHash, pinLength, biometricEna
       /* huỷ hoặc không nhận -> vẫn ở màn vân tay, chạm để thử lại hoặc chọn "Dùng mã PIN" */
     } finally {
       bioBusy.current = false;
+      window.__mmtBioUntil = Date.now() + 2500; // bỏ qua sự kiện "quay lại app" do chính hộp thoại vừa đóng gây ra
     }
   }, [biometricEnabled, mode, leave]);
-  // Tự bật cảm biến khi màn khoá hiện ra, và mỗi lần quay lại app (app bị khoá lúc đang chạy nền)
+  // Tự bật cảm biến đúng 1 lần cho mỗi lần khoá: ngay khi màn khoá thật sự hiện lên màn hình.
+  // Không tự bật lại sau khi huỷ / đóng hộp thoại (tránh lặp vô hạn) - muốn thử lại thì chạm nút vân tay.
+  const autoDone = useRef(false);
   useEffect(() => {
     if (pc || mode !== 'unlock' || pinMode) return;
-    const t = setTimeout(tryBiometric, 250);
-    const onVis = () => document.visibilityState === 'visible' && setTimeout(tryBiometric, 250);
+    const attempt = () => {
+      if (autoDone.current || document.visibilityState === 'hidden') return;
+      autoDone.current = true;
+      setTimeout(tryBiometric, 250);
+    };
+    attempt();
+    const onVis = () => document.visibilityState === 'visible' && attempt();
     document.addEventListener('visibilitychange', onVis);
     let remove = null;
     if (isNativeApp()) {
       import('@capacitor/app')
-        .then(({ App: CapApp }) => CapApp.addListener('appStateChange', ({ isActive }) => isActive && setTimeout(tryBiometric, 250)))
+        .then(({ App: CapApp }) => CapApp.addListener('appStateChange', ({ isActive }) => isActive && attempt()))
         .then((sub) => (remove = () => sub.remove()))
         .catch(() => {});
     }
     return () => {
-      clearTimeout(t);
       document.removeEventListener('visibilitychange', onVis);
       remove && remove();
     };

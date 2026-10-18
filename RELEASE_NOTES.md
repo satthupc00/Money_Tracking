@@ -2,6 +2,13 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.2.1
+
+**Sửa lỗi hỏi vân tay liên tục.**
+
+- Hộp thoại vân tay chỉ tự bật 1 lần mỗi khi mở / quay lại app. Nếu bạn huỷ, app không tự hỏi lại nữa — chạm nút vân tay để thử lại hoặc chọn "Dùng mã PIN".
+- Mở hộp thoại vân tay không còn bị tính là "rời app" (trước đây làm app tự khoá lại và hỏi vân tay lặp vô hạn).
+
 ## v2.2.0
 
 **Mục Chi tiết thiết kế lại cho điện thoại.**

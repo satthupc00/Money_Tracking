@@ -164,11 +164,17 @@ export default function App() {
     let last = Date.now();
     let hiddenAt = null;
     const mark = () => (last = Date.now());
+    const bioActive = () => (window.__mmtBioUntil || 0) > Date.now(); // đang/vừa hiện hộp thoại vân tay
     const away = () => {
+      if (bioActive()) return;
       hiddenAt = Date.now();
       if (lockDelay === 0) setUnlocked(false);
     };
     const back = () => {
+      if (bioActive()) {
+        hiddenAt = null;
+        return;
+      }
       if (hiddenAt && Date.now() - hiddenAt >= lockDelay * 60000) setUnlocked(false);
       hiddenAt = null;
       mark();
