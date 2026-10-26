@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.2.2
+
+**Quan trọng – bản Android này là app MỚI**
+- App đã được đăng ký chính chủ với Google (Android Developer Console) để không còn bị Play Protect chặn khi cập nhật.
+- Vì vậy app đổi sang mã app mới `com.mondiro.moneytracking`, **không cài đè lên bản cũ được** (khoá ký giữ nguyên).
+- Cách lên đời: sao lưu / đồng bộ dữ liệu trên bản cũ → cài `MonMoneyTracking-2.2.2.apk` → kiểm tra → gỡ bản cũ.
+- Từ bản này trở đi, cập nhật sẽ cài đè bình thường.
+
 ## v2.2.1
 
 **Sửa lỗi hỏi vân tay liên tục.**
