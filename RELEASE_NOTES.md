@@ -2,6 +2,17 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.0
+
+**Mục mới: Sổ tiết kiệm.**
+
+- Thêm các sổ tiết kiệm đang có: tên sổ, số tiền gửi, ngày bắt đầu, ngày kết thúc, lãi suất (có nút chọn nhanh kỳ hạn 1/3/6/12/24 tháng).
+- Tự tính tổng tiền lãi, lãi trung bình 1 ngày, số tiền nhận khi đáo hạn và lãi đã có đến hôm nay (lãi đơn, số ngày thực tế / 365).
+- Thẻ tổng: tổng tiền đang gửi, tổng lãi sẽ nhận, lãi trung bình mỗi ngày của tất cả sổ.
+- Biểu đồ có vạch đỏ nét đứt tại ngày đáo hạn của mỗi sổ, ghi tên sổ + số tiền + tiền lãi.
+- Điện thoại: tab "Tiết kiệm" ở thanh dưới (Cài đặt ở biểu tượng bánh răng góc trên). PC: nút "Sổ tiết kiệm" trên header.
+- Sổ tiết kiệm được đồng bộ giữa các máy và có trong file sao lưu.
+
 ## v2.2.1
 
 **Sửa lỗi hỏi vân tay liên tục.**
