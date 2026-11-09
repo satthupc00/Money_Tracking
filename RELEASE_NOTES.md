@@ -2,6 +2,15 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.2
+
+**Bảng nhập gọn gàng hơn + vạch sổ tiết kiệm dễ đọc.**
+
+- Khi mở bảng Nhập nhanh hoặc bảng nhập Sổ tiết kiệm: không bấm nhầm được phần phía dưới nữa, chạm ra ngoài không làm mất số đang nhập. Bấm phím Back (Android) hoặc Esc (PC) để đóng.
+- Phím Back cũng đóng các hộp thoại khác (cài đặt, sửa số…).
+- Biểu đồ: mỗi sổ tiết kiệm 1 màu riêng, chữ xoay dọc nằm bên trái vạch, chỉ ghi tên sổ và tiền lãi (+20tr).
+- Tab Tiết kiệm: nút + nhập nhanh tạm tắt; nút "Thêm sổ tiết kiệm" luôn cố định ở dưới cùng, không bị cuộn mất.
+
 ## v2.3.1
 
 **Sổ tiết kiệm: nhập ngày đáo hạn + kỳ hạn, tự ra ngày mở sổ.**

@@ -43,6 +43,9 @@ function linePath(pts) {
   return path;
 }
 
+// màu riêng cho vạch đáo hạn của từng sổ tiết kiệm
+const MARKER_COLORS = ['#FF5A5F', '#F2B84B', '#3D9BFF', '#22C3A6', '#B47BFF', '#FF8A3D', '#5AC8FA', '#8FD14F'];
+
 const RANGES = [
   { key: '1y', label: '1N', pcLabel: '1 năm', months: 12 },
   { key: '3y', label: '3N', pcLabel: '3 năm', months: 36 },
@@ -552,7 +555,7 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
       const dim = new Date(mk.year, mk.month, 0).getDate();
       const x = innerPadX + stepX * (idx + (mk.day - 1) / dim);
       const name = mk.name.length > 22 ? mk.name.slice(0, 21) + '…' : mk.name;
-      return { ...mk, x, k, label: `${name} · ${formatShort(mk.amount)}`, sub: `Đáo hạn ${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year} · lãi +${formatShort(mk.interest)}` };
+      return { ...mk, x, k, short: name, color: MARKER_COLORS[k % MARKER_COLORS.length], label: `${name} · ${formatShort(mk.amount)}`, sub: `Đáo hạn ${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year} · lãi +${formatShort(mk.interest)}` };
     })
     .filter(Boolean);
   const goalY = goal > 0 ? yOf(goal) : null;
@@ -624,27 +627,24 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
               </g>
             )}
             {markerLines.map((mk) => {
-              const w = Math.max(measureTextWidth(mk.label, `700 11px ${FONT}`), measureTextWidth(mk.sub, `500 9.5px ${FONT}`)) + 14;
-              const ty = padT + 2 + (mk.k % 3) * 36; // so le nhãn để nhiều sổ không đè nhau
+              // chữ xoay dọc, nằm bên trái vạch: dòng 1 = tên sổ, dòng 2 = +tiền lãi
               const viewL = -panX;
               const viewR = -panX + plotWidth;
-              const inView = mk.x >= viewL - 2 && mk.x <= viewR + 2; // vạch nằm ngoài khung nhìn -> chỉ vẽ vạch, không vẽ nhãn
-              const right = mk.x + 6 + w > viewR; // gần mép phải khung nhìn -> đặt nhãn bên trái vạch
-              const lx = right ? mk.x - 6 - w : mk.x + 6;
+              const inView = mk.x >= viewL - 2 && mk.x <= viewR + 2;
+              const ty = padT + 2;
               return (
                 <g key={mk.id} style={{ pointerEvents: 'none' }}>
-                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke="#E5383B" strokeWidth={1.6} strokeDasharray="3 4" />
-                  <circle cx={mk.x} cy={baseY} r={3.5} fill="#E5383B" />
+                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={1.6} strokeDasharray="3 4" />
+                  <circle cx={mk.x} cy={baseY} r={3.5} fill={mk.color} />
                   {inView && (
-                    <>
-                      <rect x={lx} y={ty} width={w} height={32} rx={6} fill="rgba(31,33,38,.92)" stroke="#E5383B" strokeOpacity=".6" />
-                      <text className="money" x={lx + 7} y={ty + 13} fontSize={11} fontWeight={700} fill="#FF7E80">
-                        {mk.label}
+                    <g>
+                      <text x={mk.x - 5} y={ty} transform={`rotate(-90 ${mk.x - 5} ${ty})`} fontSize={11} fontWeight={700} fill={mk.color} textAnchor="end" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
+                        {mk.short}
                       </text>
-                      <text className="money" x={lx + 7} y={ty + 26} fontSize={9.5} fontWeight={500} fill="#8D929C">
-                        {mk.sub}
+                      <text className="money" x={mk.x - 18} y={ty} transform={`rotate(-90 ${mk.x - 18} ${ty})`} fontSize={11} fontWeight={800} fill={mk.color} textAnchor="end" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
+                        +{formatShort(mk.interest)}
                       </text>
-                    </>
+                    </g>
                   )}
                 </g>
               );

@@ -137,7 +137,7 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
     </>
   );
   return (
-    <Overlay bottom={sheet} top onClose={onClose}>
+    <Overlay bottom={sheet} top lock onClose={onClose}>
       {sheet ? <div className="sheet">{body}</div> : <div className="modal">{body}</div>}
     </Overlay>
   );
@@ -158,6 +158,7 @@ export default function SavingsView({ savings, onChange, sheet }) {
   const sum = (arr, k) => arr.reduce((s, x) => s + (k === 'amount' ? Number(x.b.amount) || 0 : x.r[k]), 0);
 
   return (
+    <div className="sv-wrap">
     <div className="sv">
       <div className="card sv-sum">
         <div className="sv-sum-h">
@@ -184,9 +185,6 @@ export default function SavingsView({ savings, onChange, sheet }) {
           </div>
         </div>
       </div>
-      <button className="btn-red wide" onClick={() => setEditing('new')}>
-        <Plus size={16} /> Thêm sổ tiết kiệm
-      </button>
       <div className="sv-list">
         {rows.map(({ b, r }) => (
           <button key={b.id} className={'card sv-card' + (r.matured ? ' done' : '')} onClick={() => setEditing(b)}>
@@ -231,6 +229,13 @@ export default function SavingsView({ savings, onChange, sheet }) {
             Chưa có sổ nào. Bấm "Thêm sổ tiết kiệm" để nhập sổ đầu tiên.
           </div>
         )}
+      </div>
+    </div>
+      {/* nút thêm sổ luôn cố định ở dưới cùng, không cuộn theo danh sách */}
+      <div className="sv-foot">
+        <button className="btn-red wide" onClick={() => setEditing('new')}>
+          <Plus size={16} /> Thêm sổ tiết kiệm
+        </button>
       </div>
       {editing && (
         <SavingEditor

@@ -147,3 +147,29 @@ export async function installUpdate(info, onProgress) {
   }
   if (info.url) window.open(info.url, '_blank');
 }
+
+// ---------- Phím Back của Android ----------
+// Các màn hình phủ (bảng nhập, hộp thoại) đăng ký hàm đóng vào ngăn xếp; bấm Back sẽ đóng cái trên cùng.
+// Không còn gì để đóng -> thu nhỏ app (giống bấm Home), không thoát hẳn.
+const backStack = [];
+export function pushBackHandler(fn) {
+  const entry = { fn };
+  backStack.push(entry);
+  return () => {
+    const i = backStack.indexOf(entry);
+    if (i >= 0) backStack.splice(i, 1);
+  };
+}
+export async function initBackButton() {
+  if (!isNativeApp()) return;
+  try {
+    const { App } = await import('@capacitor/app');
+    App.addListener('backButton', () => {
+      const top = backStack[backStack.length - 1];
+      if (top) top.fn();
+      else App.minimizeApp();
+    });
+  } catch (e) {
+    /* plugin chưa sẵn sàng */
+  }
+}

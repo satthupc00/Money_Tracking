@@ -2,16 +2,31 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Plus, Trash2, GripVertical, Eye, EyeOff, Download, Upload, Copy, LogOut, RefreshCw } from 'lucide-react';
 import { UNIT_MULTIPLIER, TOTAL_CATEGORY, categoriesFor, currency, formatShort, catColor } from '../finance.js';
 import { MonthPicker } from './MixView.jsx';
-import { isNativeApp } from '../platform.js';
+import { isNativeApp, pushBackHandler } from '../platform.js';
 
-export function Overlay({ bottom, top, onClose, children }) {
+// Màn phủ: chặn mọi thao tác với phần bên dưới. Esc (PC) / phím Back (Android) để đóng.
+// lock = true (bảng nhập dữ liệu): chạm ra ngoài KHÔNG đóng, tránh mất số đang nhập.
+export function Overlay({ bottom, top, lock, onClose, children }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const k = (e) => e.key === 'Escape' && onClose && onClose();
+    const k = (e) => e.key === 'Escape' && closeRef.current && closeRef.current();
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+    const removeBack = pushBackHandler(() => closeRef.current && closeRef.current());
+    return () => {
+      window.removeEventListener('keydown', k);
+      removeBack();
+    };
+  }, []);
+  // đóng bằng "click" (không phải pointerdown) để cú chạm không lọt xuống nút nằm bên dưới sau khi màn phủ biến mất
+  const onBackdrop = (e) => {
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!lock && closeRef.current) closeRef.current();
+  };
   return (
-    <div className={'overlay' + (bottom ? ' bottom' : '') + (top ? ' top' : '')} onPointerDown={(e) => e.target === e.currentTarget && onClose && onClose()}>
+    <div className={'overlay' + (bottom ? ' bottom' : '') + (top ? ' top' : '')} onClick={onBackdrop} onPointerDown={(e) => e.stopPropagation()}>
       {children}
     </div>
   );
@@ -144,7 +159,7 @@ export function QuickEntry({ data, categoriesByYear, initialYm, onSave, onClose,
     </>
   );
   return (
-    <Overlay bottom={sheet} onClose={onClose}>
+    <Overlay bottom={sheet} lock onClose={onClose}>
       {sheet ? <div className="sheet">{body}</div> : <div className="modal wide">{body}</div>}
     </Overlay>
   );

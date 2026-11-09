@@ -890,7 +890,7 @@ export default function App() {
           {Banner}
           <div className="inner">
             <div className="rail">
-              <button className="add" onClick={openQuick} title="Nhập tháng mới" aria-label="Nhập tháng mới">
+              <button className="add" onClick={openQuick} disabled={tab === 'savings'} title="Nhập tháng mới" aria-label="Nhập tháng mới">
                 <Plus size={22} />
               </button>
               {railBtn('overview', LineChart, 'Tổng quan')}
@@ -967,7 +967,7 @@ export default function App() {
           <nav className="nav">
             {navBtn('overview', LineChart, 'Tổng quan')}
             {navBtn('detail', Table2, 'Chi tiết')}
-            <button className="add" onClick={openQuick} title="Nhập tháng mới" aria-label="Nhập tháng mới">
+            <button className="add" onClick={openQuick} disabled={tab === 'savings'} title="Nhập tháng mới" aria-label="Nhập tháng mới">
               <Plus size={24} />
             </button>
             {navBtn('mix', PieChart, 'Cơ cấu')}
