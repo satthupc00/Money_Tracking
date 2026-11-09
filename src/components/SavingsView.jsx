@@ -22,6 +22,23 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
   const [amount, setAmount] = useState(book ? fmtInput(String(book.amount)) : '');
   const [start, setStart] = useState(book?.start || todayISO());
   const [end, setEnd] = useState(book?.end || addMonths(todayISO(), 6));
+  // kỳ hạn (tháng): nhập ngày kết thúc + số tháng -> tự tính ngày mở sổ
+  const [term, setTerm] = useState(() => {
+    if (!book) return '6';
+    for (let n = 1; n <= 120; n++) if (addMonths(book.start, n) === book.end) return String(n);
+    return '';
+  });
+  const changeEnd = (v) => {
+    setEnd(v);
+    const n = parseInt(term, 10);
+    if (v && n > 0) setStart(addMonths(v, -n));
+  };
+  const changeTerm = (v) => {
+    const t = String(v).replace(/\D/g, '').slice(0, 3);
+    setTerm(t);
+    const n = parseInt(t, 10);
+    if (end && n > 0) setStart(addMonths(end, -n));
+  };
   const [rate, setRate] = useState(book ? String(book.rate).replace('.', ',') : '');
   const [confirmDel, setConfirmDel] = useState(false);
   const draft = { name, amount: Number(digits(amount)) || 0, start, end, rate: parseFloat(String(rate).replace(',', '.')) || 0 };
@@ -41,21 +58,33 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
       </label>
       <div className="row">
         <label className="sv-f">
-          <span>Ngày bắt đầu</span>
-          <input className="inp num" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          <span>Ngày kết thúc (đáo hạn)</span>
+          <input className="inp num" type="date" value={end} onChange={(e) => changeEnd(e.target.value)} />
         </label>
-        <label className="sv-f">
-          <span>Ngày kết thúc</span>
-          <input className="inp num" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <label className="sv-f" style={{ flex: '0 0 110px' }}>
+          <span>Kỳ hạn (tháng)</span>
+          <input className="inp num" inputMode="numeric" value={term} placeholder="6" onChange={(e) => changeTerm(e.target.value)} />
         </label>
       </div>
       <div className="opt-row">
         {TERMS.map((t) => (
-          <button key={t} className={'chip' + (start && end === addMonths(start, t) ? ' on' : '')} onClick={() => start && setEnd(addMonths(start, t))}>
+          <button key={t} className={'chip' + (term === String(t) ? ' on' : '')} onClick={() => changeTerm(t)}>
             {t} tháng
           </button>
         ))}
       </div>
+      <label className="sv-f">
+        <span>Ngày mở sổ {term ? '(tự tính từ ngày kết thúc − kỳ hạn)' : ''}</span>
+        <input
+          className="inp num"
+          type="date"
+          value={start}
+          onChange={(e) => {
+            setStart(e.target.value);
+            setTerm(''); // tự sửa ngày mở sổ -> không còn theo kỳ hạn tròn tháng
+          }}
+        />
+      </label>
       <label className="sv-f">
         <span>Lãi suất (%/năm)</span>
         <input className="inp num" inputMode="decimal" value={rate} placeholder="Ví dụ: 5,2" onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, ''))} />

@@ -2,6 +2,13 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.1
+
+**Sổ tiết kiệm: nhập ngày đáo hạn + kỳ hạn, tự ra ngày mở sổ.**
+
+- Ô nhập mới: Ngày kết thúc (đáo hạn) + Kỳ hạn (tháng) — ngày mở sổ tự tính bằng ngày kết thúc lùi lại số tháng đó.
+- Nút chọn nhanh 1/3/6/12/24 tháng; vẫn sửa tay được ngày mở sổ nếu cần.
+
 ## v2.3.0
 
 **Mục mới: Sổ tiết kiệm.**
