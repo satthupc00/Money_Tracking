@@ -581,33 +581,41 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
     });
     return best;
   };
-  // Bố trí chữ của các vạch: chữ dọc chiếm 1 dải [x-31, x-1] theo chiều ngang. Nếu 2 dải chồng nhau thì
-  // dời chữ sau xuống thấp hơn; hết chỗ thì ẩn. Vạch đang được bấm chọn luôn được xếp trước (ưu tiên hiện).
+  // Bố trí chữ của các vạch (chữ nằm ngang, canh giữa vạch): dòng 1 = tên sổ, dòng 2 = +tiền lãi.
+  // Vạch đang được bấm chọn: chữ to hơn + thêm ngày đáo hạn + nền tối, luôn xếp trước (ưu tiên hiện).
+  // Chữ nào đè lên chữ đã xếp thì dời xuống thấp hơn; hết chỗ thì ẩn.
   const markerLayout = (() => {
     const viewL = -panX;
     const viewR = -panX + plotWidth;
+    const fmtD = (mk) => `${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year}`;
     const vis = markerLines
       .filter((mk) => mk.x >= viewL - 2 && mk.x <= viewR + 2)
-      .map((mk) => ({
-        ...mk,
-        len: Math.max(measureTextWidth(mk.short, `700 11px ${FONT}`), measureTextWidth('+' + formatShort(mk.interest), `800 11px ${FONT}`)) + 6,
-        x0: mk.x - 31,
-        x1: mk.x - 1,
-      }))
-      .sort((a, b) => (a.id === activeMarker ? -1 : b.id === activeMarker ? 1 : a.x - b.x));
+      .map((mk) => {
+        const active = mk.id === activeMarker;
+        const amt = '+' + formatShort(mk.interest);
+        const date = fmtD(mk);
+        const w = active
+          ? Math.max(measureTextWidth(mk.short, `700 13px ${FONT}`), measureTextWidth(amt, `800 13px ${FONT}`), measureTextWidth(date, `600 11px ${FONT}`)) + 18
+          : Math.max(measureTextWidth(mk.short, `700 11px ${FONT}`), measureTextWidth(amt, `800 11px ${FONT}`)) + 6;
+        const h = active ? 58 : 28;
+        // canh giữa vạch, nhưng không cho lòi ra ngoài khung nhìn
+        const cx = Math.min(Math.max(mk.x, viewL + w / 2 + 2), viewR - w / 2 - 2);
+        return { ...mk, active, amt, date, w, h, cx, x0: cx - w / 2, x1: cx + w / 2 };
+      })
+      .sort((a, b) => (a.active ? -1 : b.active ? 1 : a.x - b.x));
     const placed = [];
     const out = {};
-    const top = padT + 2;
+    const top = padT - 4;
     const bottom = baseY - 6;
     vis.forEach((mk) => {
-      const near = placed.filter((p) => p.x0 < mk.x1 && p.x1 > mk.x0);
-      const cands = [top, ...near.map((p) => p.y1 + 8)].sort((a, b) => a - b);
+      const near = placed.filter((p) => p.x0 < mk.x1 + 3 && p.x1 > mk.x0 - 3);
+      const cands = [top, ...near.map((p) => p.y1 + 4)].sort((a, b) => a - b);
       for (const y0 of cands) {
-        const y1 = y0 + mk.len;
+        const y1 = y0 + mk.h;
         if (y1 > bottom) continue;
-        if (near.some((p) => y0 < p.y1 && y1 > p.y0)) continue;
+        if (near.some((p) => y0 < p.y1 + 2 && y1 > p.y0 - 2)) continue;
         placed.push({ x0: mk.x0, x1: mk.x1, y0, y1 });
-        out[mk.id] = y0;
+        out[mk.id] = { ...mk, y0 };
         return;
       }
     });
@@ -682,23 +690,36 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
               </g>
             )}
             {markerLines.map((mk) => {
-              // chữ xoay dọc, nằm bên trái vạch: dòng 1 = tên sổ, dòng 2 = +tiền lãi
-              const ty = markerLayout[mk.id]; // undefined = bị ẩn vì chồng lấn
+              const L = markerLayout[mk.id]; // undefined = bị ẩn vì chồng lấn
               const active = activeMarker === mk.id;
               return (
                 <g key={mk.id} style={{ pointerEvents: 'none' }}>
                   <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={active ? 2.4 : 1.6} strokeDasharray={active ? '5 3' : '3 4'} />
                   <circle cx={mk.x} cy={baseY} r={active ? 4.5 : 3.5} fill={mk.color} />
-                  {ty !== undefined && (
-                    <g>
-                      <text x={mk.x - 5} y={ty} transform={`rotate(-90 ${mk.x - 5} ${ty})`} fontSize={11} fontWeight={700} fill={mk.color} textAnchor="end" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
-                        {mk.short}
-                      </text>
-                      <text className="money" x={mk.x - 18} y={ty} transform={`rotate(-90 ${mk.x - 18} ${ty})`} fontSize={11} fontWeight={800} fill={mk.color} textAnchor="end" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
-                        +{formatShort(mk.interest)}
-                      </text>
-                    </g>
-                  )}
+                  {L &&
+                    (L.active ? (
+                      <g>
+                        <rect x={L.x0} y={L.y0} width={L.w} height={L.h} rx={8} fill="rgba(10,11,13,.9)" stroke={mk.color} strokeWidth={1.2} />
+                        <text x={L.cx} y={L.y0 + 18} fontSize={13} fontWeight={700} fill={mk.color} textAnchor="middle">
+                          {mk.short}
+                        </text>
+                        <text className="money" x={L.cx} y={L.y0 + 35} fontSize={13} fontWeight={800} fill={mk.color} textAnchor="middle">
+                          {L.amt}
+                        </text>
+                        <text x={L.cx} y={L.y0 + 50} fontSize={11} fontWeight={600} fill="#C9CDD4" textAnchor="middle">
+                          {L.date}
+                        </text>
+                      </g>
+                    ) : (
+                      <g>
+                        <text x={L.cx} y={L.y0 + 11} fontSize={11} fontWeight={700} fill={mk.color} textAnchor="middle" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
+                          {mk.short}
+                        </text>
+                        <text className="money" x={L.cx} y={L.y0 + 24} fontSize={11} fontWeight={800} fill={mk.color} textAnchor="middle" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
+                          {L.amt}
+                        </text>
+                      </g>
+                    ))}
                 </g>
               );
             })}

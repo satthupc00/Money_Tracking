@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.4
+
+**Chữ của vạch sổ tiết kiệm dễ đọc hơn.**
+
+- Chữ nằm ngang, canh giữa vạch: tên sổ ở trên, tiền lãi (+13tr) ở dưới.
+- Nhiều sổ đáo hạn sát nhau: chữ tự xếp tầng xuống dưới để không đè nhau, hết chỗ thì ẩn.
+- Chạm vào 1 vạch: chữ của sổ đó to lên, có thêm ngày đáo hạn và nền tối phía sau, luôn hiện ở trên cùng.
+
 ## v2.3.3
 
 **Vạch sổ tiết kiệm trên biểu đồ không còn đè chữ lên nhau.**
