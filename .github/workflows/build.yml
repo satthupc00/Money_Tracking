@@ -114,6 +114,11 @@ jobs:
         with:
           path: artifacts
 
+      - name: Bản PC tên cố định (link tải không đổi giữa các phiên bản)
+        run: |
+          EXE=$(ls artifacts/windows/MonMoneyTracking-Setup-*.exe | head -n 1)
+          cp "$EXE" artifacts/windows/MonMoneyTracking-Setup.exe
+
       - name: Đọc phiên bản + bảng thông báo
         id: meta
         env:

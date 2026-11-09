@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.3
+
+**Vạch sổ tiết kiệm trên biểu đồ không còn đè chữ lên nhau.**
+
+- Chữ của các vạch đáo hạn tự dời xuống thấp hơn để né nhau; nếu không còn chỗ thì tự ẩn.
+- Chạm (hoặc bấm chuột) vào 1 vạch: chữ của sổ đó được ưu tiên hiện ở trên cùng, sổ khác dời xuống / ẩn đi. Vạch đang chọn được tô đậm hơn.
+- Bản PC có thêm file cài tên cố định `MonMoneyTracking-Setup.exe` (link tải không đổi giữa các phiên bản).
+
 ## v2.3.2
 
 **Bảng nhập gọn gàng hơn + vạch sổ tiết kiệm dễ đọc.**

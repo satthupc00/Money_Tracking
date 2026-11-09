@@ -217,6 +217,7 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
   }, [yearLabels, panX, plotWidth]);
 
   const [selectedIdx, setSelectedIdx] = useState(null);
+  const [activeMarker, setActiveMarker] = useState(null); // vạch sổ tiết kiệm được bấm chọn -> ưu tiên hiện chữ
   const earliestPoint = useMemo(() => points.find((p) => p.val > 0) || null, [points]);
   const selectedLabelInfo = useMemo(() => {
     if (selectedIdx === null || !points[selectedIdx]) return null;
@@ -469,9 +470,15 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
   const onTouchEnd = (e) => {
     const g = gestureRef.current;
     if (g.mode === 'pan' && !g.moved && Date.now() - g.tapStartTime < 350 && plotAreaRef.current) {
-      // chạm nhẹ -> chọn điểm gần nhất theo trục ngang, chạm lại đúng điểm đó thì tắt
-      const i = nearestIndex(g.tapStartX);
-      setSelectedIdx((prev) => (prev === i ? null : i));
+      // chạm trúng vạch sổ tiết kiệm -> ưu tiên hiện chữ của sổ đó; không thì chọn điểm gần nhất
+      const mk = markerAt(g.tapStartX);
+      if (mk) {
+        setActiveMarker(mk.id);
+        setSelectedIdx(null);
+      } else {
+        const i = nearestIndex(g.tapStartX);
+        setSelectedIdx((prev) => (prev === i ? null : i));
+      }
       const ct = e.changedTouches && e.changedTouches[0];
       g.lastTapUpTime = Date.now();
       g.lastTapUpX = ct ? ct.clientX : g.tapStartX;
@@ -538,6 +545,11 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
   };
   const onPointerUp = (e) => {
     if (e.pointerType !== 'mouse') return;
+    const m = gestureRef.current.mouse;
+    if (m && !m.moved) {
+      const mk = markerAt(e.clientX);
+      if (mk) setActiveMarker(mk.id);
+    }
     gestureRef.current.mouse = null;
     setGrabbing(false);
     snapChartBack();
@@ -558,6 +570,49 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
       return { ...mk, x, k, short: name, color: MARKER_COLORS[k % MARKER_COLORS.length], label: `${name} · ${formatShort(mk.amount)}`, sub: `Đáo hạn ${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year} · lãi +${formatShort(mk.interest)}` };
     })
     .filter(Boolean);
+  const markerAt = (clientX) => {
+    if (!plotAreaRef.current || !markerLines.length) return null;
+    const rect = plotAreaRef.current.getBoundingClientRect();
+    const lx = clientX - rect.left - panX;
+    let best = null;
+    markerLines.forEach((mk) => {
+      const d = Math.abs(mk.x - lx);
+      if (d <= 14 && (!best || d < best.d)) best = { ...mk, d };
+    });
+    return best;
+  };
+  // Bố trí chữ của các vạch: chữ dọc chiếm 1 dải [x-31, x-1] theo chiều ngang. Nếu 2 dải chồng nhau thì
+  // dời chữ sau xuống thấp hơn; hết chỗ thì ẩn. Vạch đang được bấm chọn luôn được xếp trước (ưu tiên hiện).
+  const markerLayout = (() => {
+    const viewL = -panX;
+    const viewR = -panX + plotWidth;
+    const vis = markerLines
+      .filter((mk) => mk.x >= viewL - 2 && mk.x <= viewR + 2)
+      .map((mk) => ({
+        ...mk,
+        len: Math.max(measureTextWidth(mk.short, `700 11px ${FONT}`), measureTextWidth('+' + formatShort(mk.interest), `800 11px ${FONT}`)) + 6,
+        x0: mk.x - 31,
+        x1: mk.x - 1,
+      }))
+      .sort((a, b) => (a.id === activeMarker ? -1 : b.id === activeMarker ? 1 : a.x - b.x));
+    const placed = [];
+    const out = {};
+    const top = padT + 2;
+    const bottom = baseY - 6;
+    vis.forEach((mk) => {
+      const near = placed.filter((p) => p.x0 < mk.x1 && p.x1 > mk.x0);
+      const cands = [top, ...near.map((p) => p.y1 + 8)].sort((a, b) => a - b);
+      for (const y0 of cands) {
+        const y1 = y0 + mk.len;
+        if (y1 > bottom) continue;
+        if (near.some((p) => y0 < p.y1 && y1 > p.y0)) continue;
+        placed.push({ x0: mk.x0, x1: mk.x1, y0, y1 });
+        out[mk.id] = y0;
+        return;
+      }
+    });
+    return out;
+  })();
   const goalY = goal > 0 ? yOf(goal) : null;
   const showGoal = goalY !== null && goalY >= padT - 2 && goalY <= baseY;
   const transition = bouncing || animating ? `transform ${BOUNCE_BACK_MS}ms var(--ease-out)` : 'none';
@@ -628,15 +683,13 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
             )}
             {markerLines.map((mk) => {
               // chữ xoay dọc, nằm bên trái vạch: dòng 1 = tên sổ, dòng 2 = +tiền lãi
-              const viewL = -panX;
-              const viewR = -panX + plotWidth;
-              const inView = mk.x >= viewL - 2 && mk.x <= viewR + 2;
-              const ty = padT + 2;
+              const ty = markerLayout[mk.id]; // undefined = bị ẩn vì chồng lấn
+              const active = activeMarker === mk.id;
               return (
                 <g key={mk.id} style={{ pointerEvents: 'none' }}>
-                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={1.6} strokeDasharray="3 4" />
-                  <circle cx={mk.x} cy={baseY} r={3.5} fill={mk.color} />
-                  {inView && (
+                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={active ? 2.4 : 1.6} strokeDasharray={active ? '5 3' : '3 4'} />
+                  <circle cx={mk.x} cy={baseY} r={active ? 4.5 : 3.5} fill={mk.color} />
+                  {ty !== undefined && (
                     <g>
                       <text x={mk.x - 5} y={ty} transform={`rotate(-90 ${mk.x - 5} ${ty})`} fontSize={11} fontWeight={700} fill={mk.color} textAnchor="end" stroke="#26292F" strokeWidth={3} paintOrder="stroke">
                         {mk.short}
