@@ -70,12 +70,13 @@ export function totalFor(data, categoriesByYear, yr, m) {
 }
 
 // Toàn bộ dòng thời gian: từ năm sớm nhất có dữ liệu tới hết năm hiện tại
-export function buildTimeline(data, categoriesByYear) {
+export function buildTimeline(data, categoriesByYear, extraMaxYear = 0) {
   const years = Object.keys(data)
     .map(Number)
     .filter((y) => !isNaN(y));
   const minYear = years.length ? Math.min(...years) : REAL_CURRENT_YEAR;
-  const maxYear = Math.max(REAL_CURRENT_YEAR, years.length ? Math.max(...years) : REAL_CURRENT_YEAR);
+  // extraMaxYear: kéo dài trục thời gian tới năm đáo hạn xa nhất của các sổ tiết kiệm
+  const maxYear = Math.max(REAL_CURRENT_YEAR, years.length ? Math.max(...years) : REAL_CURRENT_YEAR, extraMaxYear || 0);
   const months = [];
   const values = [];
   for (let y = minYear; y <= maxYear; y++) {
@@ -144,4 +145,41 @@ export function computeSummary(timeline, goal) {
     goalInfo = { goal, pct: Math.min(100, (cur / goal) * 100), remain: Math.max(0, goal - cur), eta };
   }
   return { index: L, value: cur, ...months[L], prev, yearAgo, ytd, goal: goalInfo };
+}
+
+// ---------- Sổ tiết kiệm ----------
+// book: { id, name, amount (đồng), start 'YYYY-MM-DD', end 'YYYY-MM-DD', rate (%/năm) }
+// Lãi đơn tính theo số ngày thực tế / 365 (cách tính phổ biến của ngân hàng VN cho sổ lĩnh lãi cuối kỳ)
+const DAY_MS = 86400000;
+export function parseDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+export function formatDate(s) {
+  const d = parseDate(s);
+  return d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+}
+export function calcSaving(book, now = new Date()) {
+  const a = parseDate(book.start);
+  const b = parseDate(book.end);
+  const amount = Number(book.amount) || 0;
+  const rate = Number(book.rate) || 0;
+  if (!a || !b || b <= a) return null;
+  const days = Math.round((b - a) / DAY_MS);
+  const interest = (amount * rate) / 100 * (days / 365);
+  const perDay = days ? interest / days : 0;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const elapsed = Math.min(days, Math.max(0, Math.round((today - a) / DAY_MS)));
+  return {
+    days,
+    interest: Math.round(interest),
+    perDay: Math.round(perDay),
+    total: Math.round(amount + interest),
+    elapsed,
+    remaining: days - elapsed,
+    accrued: Math.round(perDay * elapsed),
+    progress: days ? elapsed / days : 0,
+    matured: today >= b,
+    started: today >= a,
+  };
 }

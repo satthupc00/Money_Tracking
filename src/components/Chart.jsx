@@ -56,7 +56,7 @@ const MODES = [
   { key: 'stack', Icon: Layers, label: 'Cột chồng theo mục' },
 ];
 
-export default function Chart({ months, values, stacks = null, goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
+export default function Chart({ months, values, stacks = null, markers = [], goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
   const [mode, setMode] = useState(() => {
     const m = lsGet('mmt-chart-mode');
     return MODES.some((x) => x.key === m) ? m : 'line';
@@ -101,7 +101,7 @@ export default function Chart({ months, values, stacks = null, goal = 0, invertZ
           needsDefaultPanRef.current = false;
           const s = Math.min(maxScaleX, Math.max(1, N / 12));
           setScaleX(s);
-          setPanX(-Math.max(0, el.offsetWidth * s - el.offsetWidth));
+          setPanX(panToRecent(s, el.offsetWidth));
         }
       }
       if (el.offsetHeight > 0) setPlotHeightPx(el.offsetHeight);
@@ -331,12 +331,23 @@ export default function Chart({ months, values, stacks = null, goal = 0, invertZ
   };
 
   // ---- Chọn nhanh khoảng thời gian ----
+  const panToRecent = (s, width) => {
+    let last = -1;
+    values.forEach((v, i) => v > 0 && (last = i));
+    const now = new Date();
+    const todayIdx = months.findIndex((m) => m.year === now.getFullYear() && m.month === now.getMonth() + 1);
+    const right = Math.min(N - 1, Math.max(last, todayIdx) + 1);
+    const effW = width * s;
+    const step = Math.max(1, effW - 28) / Math.max(1, N - 1);
+    const xRight = 14 + step * right + 14;
+    return Math.min(0, Math.max(-Math.max(0, effW - width), width - xRight));
+  };
   const applyRange = (r) => {
     const s = r.months ? Math.min(maxScaleX, Math.max(1, N / r.months)) : 1;
     setAnimating(true);
     setTimeout(() => setAnimating(false), 380);
     setScaleX(s);
-    setPanX(-Math.max(0, plotWidth * s - plotWidth));
+    setPanX(r.months ? panToRecent(s, plotWidth) : 0);
     setScaleY(1);
     setPanYValue(0);
     setSelectedIdx(null);
@@ -532,6 +543,18 @@ export default function Chart({ months, values, stacks = null, goal = 0, invertZ
     if (e.pointerType === 'mouse' && !gestureRef.current.mouse) setSelectedIdx(null);
   };
 
+  // vạch đáo hạn sổ tiết kiệm: vị trí theo đúng ngày trong tháng
+  const stepX = usableWidth / Math.max(1, N - 1);
+  const markerLines = markers
+    .map((mk, k) => {
+      const idx = months.findIndex((m) => m.year === mk.year && m.month === mk.month);
+      if (idx < 0) return null;
+      const dim = new Date(mk.year, mk.month, 0).getDate();
+      const x = innerPadX + stepX * (idx + (mk.day - 1) / dim);
+      const name = mk.name.length > 22 ? mk.name.slice(0, 21) + '…' : mk.name;
+      return { ...mk, x, k, label: `${name} · ${formatShort(mk.amount)}`, sub: `Đáo hạn ${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year} · lãi +${formatShort(mk.interest)}` };
+    })
+    .filter(Boolean);
   const goalY = goal > 0 ? yOf(goal) : null;
   const showGoal = goalY !== null && goalY >= padT - 2 && goalY <= baseY;
   const transition = bouncing || animating ? `transform ${BOUNCE_BACK_MS}ms var(--ease-out)` : 'none';
@@ -600,6 +623,32 @@ export default function Chart({ months, values, stacks = null, goal = 0, invertZ
                 </text>
               </g>
             )}
+            {markerLines.map((mk) => {
+              const w = Math.max(measureTextWidth(mk.label, `700 11px ${FONT}`), measureTextWidth(mk.sub, `500 9.5px ${FONT}`)) + 14;
+              const ty = padT + 2 + (mk.k % 3) * 36; // so le nhãn để nhiều sổ không đè nhau
+              const viewL = -panX;
+              const viewR = -panX + plotWidth;
+              const inView = mk.x >= viewL - 2 && mk.x <= viewR + 2; // vạch nằm ngoài khung nhìn -> chỉ vẽ vạch, không vẽ nhãn
+              const right = mk.x + 6 + w > viewR; // gần mép phải khung nhìn -> đặt nhãn bên trái vạch
+              const lx = right ? mk.x - 6 - w : mk.x + 6;
+              return (
+                <g key={mk.id} style={{ pointerEvents: 'none' }}>
+                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke="#E5383B" strokeWidth={1.6} strokeDasharray="3 4" />
+                  <circle cx={mk.x} cy={baseY} r={3.5} fill="#E5383B" />
+                  {inView && (
+                    <>
+                      <rect x={lx} y={ty} width={w} height={32} rx={6} fill="rgba(31,33,38,.92)" stroke="#E5383B" strokeOpacity=".6" />
+                      <text className="money" x={lx + 7} y={ty + 13} fontSize={11} fontWeight={700} fill="#FF7E80">
+                        {mk.label}
+                      </text>
+                      <text className="money" x={lx + 7} y={ty + 26} fontSize={9.5} fontWeight={500} fill="#8D929C">
+                        {mk.sub}
+                      </text>
+                    </>
+                  )}
+                </g>
+              );
+            })}
             {showGoal && (
               <g>
                 <line x1={0} x2={effectiveWidth} y1={goalY} y2={goalY} stroke="#3DDC8A" strokeOpacity=".7" strokeWidth={1.2} strokeDasharray="6 4" />

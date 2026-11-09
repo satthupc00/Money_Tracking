@@ -367,3 +367,31 @@ kbd { font: 11px 'Segoe UI', sans-serif; background: var(--chrome); box-shadow: 
 .dv-detail { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 .dv-detail .dv-rows { padding: 0; border-top: 0; }
 .dv-detail .dv-grid { padding: 0; }
+
+/* ===== Sổ tiết kiệm ===== */
+.sv { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-bottom: 12px; scrollbar-width: none; }
+.sv::-webkit-scrollbar { display: none; }
+.sv > * { flex-shrink: 0; }
+.sv-sum { flex: 0 0 auto; }
+.sv-sum-h { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px; }
+.sv-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sv-kpis > div, .sv-grid > div, .sv-result > div { background: var(--chrome); border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sv-kpis span, .sv-grid span, .sv-result span { font-size: 11px; color: var(--muted); }
+.sv-kpis b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-list { display: flex; flex-direction: column; gap: 10px; }
+.sv-card { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 12px; flex: 0 0 auto; }
+.sv-card:hover { box-shadow: 0 0 0 1px var(--red); }
+.sv-card.done { opacity: 0.6; }
+.sv-c-h { display: flex; align-items: center; gap: 8px; }
+.sv-c-h .n { font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; color: var(--warn); background: rgba(242, 184, 75, 0.12); white-space: nowrap; }
+.sv-badge.done { color: var(--green); background: rgba(61, 220, 138, 0.12); }
+.sv-c-amt b { font-size: 18px; font-weight: 800; }
+.sv-c-date { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.sv-prog { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.sv-prog i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #b3262a, var(--red)); }
+.sv-grid, .sv-result { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sv-grid b, .sv-result b { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-f { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.sv-f > span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.sv-f input[type='date'] { color-scheme: dark; }

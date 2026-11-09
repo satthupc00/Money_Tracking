@@ -1,20 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Settings, RefreshCw, LineChart, Table2, PieChart, Plus, List, Download, X } from 'lucide-react';
+import { PiggyBank, ChevronLeft, ChevronRight, Eye, EyeOff, Settings, RefreshCw, LineChart, Table2, PieChart, Plus, List, Download, X } from 'lucide-react';
 import Chart from './components/Chart.jsx';
 import DetailTable from './components/DetailTable.jsx';
 import DetailView from './components/DetailView.jsx';
+import SavingsView from './components/SavingsView.jsx';
 import LockScreen from './components/LockScreen.jsx';
 import Logo from './components/Logo.jsx';
 import { Donut, Legend, MonthPicker, CategoryHistory, mixOf } from './components/MixView.jsx';
 import { Overlay, EditCellModal, QuickEntry, ManageCategories, LoginModal, ForgotModal, ConflictModal, SettingsModal } from './components/Modals.jsx';
 import {
   MONTHS, TOTAL_CATEGORY, UNIT_MULTIPLIER, DEFAULT_GOAL, REAL_CURRENT_YEAR, REAL_CURRENT_MONTH,
-  categoriesFor, totalFor, buildTimeline, setCategoryOrder, computeSummary, formatShort, formatPct, currency, catColor,
+  categoriesFor, totalFor, buildTimeline, calcSaving, parseDate, setCategoryOrder, computeSummary, formatShort, formatPct, currency, catColor,
 } from './finance.js';
 import { isNativeApp, isElectron, lsGet, lsSet, lsGetJSON, hashSecret, legacyHash, checkForUpdate, installUpdate } from './platform.js';
 import { APP_VERSION } from './config.js';
 import * as sync from './sync.js';
 import { SEED_DATA as DEMO_DATA, SEED_CATEGORIES_BY_YEAR as DEMO_CATEGORIES_BY_YEAR } from './seedData.js';
+const DEMO_SAVINGS = [
+  { id: 'd1', name: 'Sổ ngân hàng A 6 tháng', amount: 300000000, start: '2026-08-15', end: '2027-02-15', rate: 5.2 },
+  { id: 'd2', name: 'Sổ ngân hàng B 12 tháng', amount: 200000000, start: '2026-05-02', end: '2027-05-02', rate: 6.1 },
+  { id: 'd3', name: 'Sổ ngắn hạn 3 tháng', amount: 50000000, start: '2026-06-01', end: '2026-09-01', rate: 4.1 },
+];
 
 // Bản xem thử dùng số liệu giả và KHÔNG đồng bộ (tránh đẩy số giả lên tài khoản thật)
 const DEMO_MODE = !isNativeApp() && !isElectron() && (import.meta.env.DEV || import.meta.env.VITE_DEMO === '1' || /[?&]demo\b/.test(window.location.search));
@@ -36,7 +42,7 @@ function stableStringify(v) {
   if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
   return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
 }
-const pickPayload = (o) => ({ data: o.data || {}, categoriesByYear: o.categoriesByYear || {}, goal: typeof o.goal === 'number' ? o.goal : DEFAULT_GOAL });
+const pickPayload = (o) => ({ data: o.data || {}, categoriesByYear: o.categoriesByYear || {}, goal: typeof o.goal === 'number' ? o.goal : DEFAULT_GOAL, savings: Array.isArray(o.savings) ? o.savings : [] });
 const hasAnyData = (data) => Object.values(data || {}).some((y) => Object.values(y || {}).some((m) => Object.keys(m || {}).length > 0));
 function describe(payload, at) {
   const tl = buildTimeline(payload.data, payload.categoriesByYear);
@@ -86,6 +92,10 @@ export default function App() {
     const g = lsGet(GOAL_KEY);
     return g === null ? DEFAULT_GOAL : Number(g) || 0;
   });
+  const [savings, setSavings] = useState(() => {
+    const v = lsGetJSON('mmt-savings', null);
+    return Array.isArray(v) ? v : DEMO_MODE ? DEMO_SAVINGS : [];
+  });
   const [year, setYear] = useState(REAL_CURRENT_YEAR);
   const [tab, setTab] = useState('overview');
   const [privacy, setPrivacy] = useState(() => lsGet('mmt-privacy') === '1');
@@ -110,7 +120,18 @@ export default function App() {
       .forEach((y) => (categoriesByYear[y] || []).forEach((c) => !seen.includes(c) && seen.push(c)));
     setCategoryOrder(seen);
   }, [categoriesByYear]);
-  const timeline = useMemo(() => buildTimeline(data, categoriesByYear), [data, categoriesByYear]);
+  // năm đáo hạn xa nhất của sổ tiết kiệm -> kéo dài trục biểu đồ để thấy được vạch đáo hạn
+  const savingsMaxYear = useMemo(() => Math.max(0, ...savings.map((b) => parseDate(b.end)?.getFullYear() || 0)), [savings]);
+  const timeline = useMemo(() => buildTimeline(data, categoriesByYear, savingsMaxYear), [data, categoriesByYear, savingsMaxYear]);
+  // vạch đỏ trên biểu đồ tại ngày đáo hạn của mỗi sổ (chưa đáo hạn)
+  const savingMarkers = useMemo(
+    () =>
+      savings
+        .map((b) => ({ b, r: calcSaving(b), d: parseDate(b.end) }))
+        .filter((x) => x.r && x.d && !x.r.matured)
+        .map(({ b, r, d }) => ({ id: b.id, year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), name: b.name, amount: Number(b.amount) || 0, interest: r.interest, end: b.end })),
+    [savings]
+  );
   const summary = useMemo(() => computeSummary(timeline, goal), [timeline, goal]);
   // dữ liệu cho biểu đồ cột chồng: mỗi tháng = danh sách mục (dưới -> trên), tháng ghi đè Tổng thì không chia
   const stacks = useMemo(
@@ -206,7 +227,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('local'); // local | pending | synced | error
   const [conflict, setConflict] = useState(null);
-  const payload = useMemo(() => ({ data, categoriesByYear, goal }), [data, categoriesByYear, goal]);
+  const payload = useMemo(() => ({ data, categoriesByYear, goal, savings }), [data, categoriesByYear, goal, savings]);
   const payloadRef = useRef(payload);
   payloadRef.current = payload;
   const syncRef = useRef({ lastJson: stableStringify(pickPayload(payload)), ready: false, timer: null, uid: null });
@@ -218,6 +239,7 @@ export default function App() {
     setData(p.data);
     setCategoriesByYear(p.categoriesByYear);
     setGoal(p.goal);
+    setSavings(p.savings);
     lsSet('mmt-dirty', '0');
     lsSet('mmt-updated-at', String(remote.updatedAt || Date.now()));
     lsSet('mmt-synced-uid', uid);
@@ -327,6 +349,7 @@ export default function App() {
     lsSet(STORAGE_KEY, JSON.stringify(data));
     lsSet(CAT_BY_YEAR_STORAGE_KEY, JSON.stringify(categoriesByYear));
     lsSet(GOAL_KEY, String(goal));
+    lsSet('mmt-savings', JSON.stringify(savings));
     const s = syncRef.current;
     const json = stableStringify(pickPayload(payload));
     if (json === s.lastJson) return;
@@ -336,7 +359,7 @@ export default function App() {
     setSyncStatus('pending');
     clearTimeout(s.timer);
     s.timer = setTimeout(() => pushNow(s.uid), 800);
-  }, [payload, data, categoriesByYear, goal, conflict, pushNow]);
+  }, [payload, data, categoriesByYear, goal, savings, conflict, pushNow]);
 
   // ---------------- cập nhật app ----------------
   const [update, setUpdate] = useState({ status: 'idle' }); // idle | checking | latest | available | downloading | error
@@ -433,7 +456,7 @@ export default function App() {
 
   // ---------------- sao lưu ----------------
   const doExport = async () => {
-    const text = JSON.stringify({ data, categoriesByYear, goal }, null, 2);
+    const text = JSON.stringify({ data, categoriesByYear, goal, savings }, null, 2);
     const filename = `mon-money-tracking-${new Date().toISOString().slice(0, 10)}.json`;
     if (native) {
       try {
@@ -467,6 +490,7 @@ export default function App() {
           if (parsed.categoriesByYear && typeof parsed.categoriesByYear === 'object') setCategoriesByYear(parsed.categoriesByYear);
           else if (Array.isArray(parsed.categories)) setCategoriesByYear({ [year]: parsed.categories });
           if (typeof parsed.goal === 'number') setGoal(parsed.goal);
+          if (Array.isArray(parsed.savings)) setSavings(parsed.savings);
           resolve({ type: 'success', text: 'Đã khôi phục dữ liệu từ file' });
         } catch (e) {
           resolve({ type: 'error', text: 'File sao lưu không hợp lệ' });
@@ -609,7 +633,7 @@ export default function App() {
   );
   const ChartCard = (
     <div className="card fx-rise" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', animationDelay: '120ms' }}>
-      <Chart months={timeline.months} values={timeline.values} stacks={stacks} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
+      <Chart months={timeline.months} values={timeline.values} stacks={stacks} markers={savingMarkers} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
     </div>
   );
   const editRequest = (key, m) => {
@@ -627,6 +651,7 @@ export default function App() {
     onManage: () => setModal({ type: 'manage' }),
   };
   const DetailMobile = <DetailView {...detailProps} />;
+  const SavingsBlock = <SavingsView savings={savings} onChange={setSavings} sheet={!pc} />;
   const DetailCard = (
     <div className="card fx-rise" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '10px 0 0' }}>
       <div className="card-h" style={{ padding: '0 12px' }}>
@@ -732,6 +757,9 @@ export default function App() {
             </div>
           </div>
           <div className="tools">
+            <button className="btn" onClick={() => setModal({ type: 'savings' })} title="Sổ tiết kiệm">
+              <PiggyBank size={16} /> Sổ tiết kiệm
+            </button>
             <button className="btn-red" onClick={openQuick} title="Nhập số dư tháng mới (Ctrl+N)">
               <Plus size={16} /> Nhập tháng
             </button>
@@ -868,13 +896,18 @@ export default function App() {
               {railBtn('overview', LineChart, 'Tổng quan')}
               {railBtn('detail', Table2, 'Chi tiết')}
               {railBtn('mix', PieChart, 'Cơ cấu')}
+              {railBtn('savings', PiggyBank, 'Tiết kiệm')}
               <button style={{ marginTop: 'auto' }} onClick={() => setModal({ type: 'settings' })}>
                 <Settings size={20} />
                 Cài đặt
               </button>
             </div>
-            {!summary ? (
+            {!summary && tab !== 'savings' ? (
               <div className="col" style={{ gridColumn: '2 / 4' }}>{Empty}</div>
+            ) : foldTab === 'savings' ? (
+              <div className="col" style={{ gridColumn: '2 / 4' }}>
+                {SavingsBlock}
+              </div>
             ) : foldTab === 'detail' ? (
               <DetailView {...detailProps} layout="split" />
             ) : foldTab === 'mix' ? (
@@ -914,10 +947,12 @@ export default function App() {
           {top}
           {Banner}
           <div className="a-body">
-            {!summary ? (
+            {!summary && tab !== 'savings' ? (
               Empty
             ) : tab === 'detail' ? (
               DetailMobile
+            ) : tab === 'savings' ? (
+              SavingsBlock
             ) : tab === 'mix' ? (
               MixCards
             ) : (
@@ -936,10 +971,7 @@ export default function App() {
               <Plus size={24} />
             </button>
             {navBtn('mix', PieChart, 'Cơ cấu')}
-            <button onClick={() => setModal({ type: 'settings' })}>
-              <Settings size={20} />
-              Cài đặt
-            </button>
+            {navBtn('savings', PiggyBank, 'Tiết kiệm')}
           </nav>
         </>
       );
@@ -1006,6 +1038,19 @@ export default function App() {
             </div>
             <div className="m-sub">Số dư của mục này qua các tháng</div>
             <CategoryHistory name={modal.name} data={data} timeline={timeline} />
+          </div>
+        </Overlay>
+      )}
+      {modal?.type === 'savings' && (
+        <Overlay onClose={close}>
+          <div className="modal wide" style={{ width: 640, height: '86%' }}>
+            <div className="m-h">
+              <span>Sổ tiết kiệm</span>
+              <button className="ibtn" onClick={close} aria-label="Đóng">
+                <X size={18} />
+              </button>
+            </div>
+            {SavingsBlock}
           </div>
         </Overlay>
       )}
