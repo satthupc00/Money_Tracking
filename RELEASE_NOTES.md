@@ -2,6 +2,13 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.3.5
+
+**Bấm vào vạch sổ tiết kiệm gọn gàng hơn.**
+
+- Bấm vào vạch: vạch nháy to và sáng lên 1 lần rồi trở lại bình thường, không vẽ thêm đường đứt đoạn nào.
+- Khi chuột / ngón tay ở sát vạch sổ tiết kiệm, không hiện vạch dò số liệu màu trắng nữa (trước đây vẽ đè gây rối).
+
 ## v2.3.4
 
 **Chữ của vạch sổ tiết kiệm dễ đọc hơn.**

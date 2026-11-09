@@ -218,6 +218,7 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
 
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [activeMarker, setActiveMarker] = useState(null); // vạch sổ tiết kiệm được bấm chọn -> ưu tiên hiện chữ
+  const [flashKey, setFlashKey] = useState(0); // đổi số -> vạch vừa bấm nháy sáng 1 lần
   const earliestPoint = useMemo(() => points.find((p) => p.val > 0) || null, [points]);
   const selectedLabelInfo = useMemo(() => {
     if (selectedIdx === null || !points[selectedIdx]) return null;
@@ -474,6 +475,7 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
       const mk = markerAt(g.tapStartX);
       if (mk) {
         setActiveMarker(mk.id);
+        setFlashKey((k) => k + 1);
         setSelectedIdx(null);
       } else {
         const i = nearestIndex(g.tapStartX);
@@ -541,14 +543,19 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
         return;
       }
     }
-    setSelectedIdx(nearestIndex(e.clientX)); // rê chuột để xem số từng tháng
+    // rê chuột để xem số từng tháng; nhưng khi đang ở sát vạch sổ tiết kiệm thì không vẽ vạch dò (tránh đè rối)
+    setSelectedIdx(markerAt(e.clientX) ? null : nearestIndex(e.clientX));
   };
   const onPointerUp = (e) => {
     if (e.pointerType !== 'mouse') return;
     const m = gestureRef.current.mouse;
     if (m && !m.moved) {
       const mk = markerAt(e.clientX);
-      if (mk) setActiveMarker(mk.id);
+      if (mk) {
+        setActiveMarker(mk.id);
+        setFlashKey((k) => k + 1);
+        setSelectedIdx(null);
+      }
     }
     gestureRef.current.mouse = null;
     setGrabbing(false);
@@ -694,8 +701,9 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
               const active = activeMarker === mk.id;
               return (
                 <g key={mk.id} style={{ pointerEvents: 'none' }}>
-                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={active ? 2.4 : 1.6} strokeDasharray={active ? '5 3' : '3 4'} />
-                  <circle cx={mk.x} cy={baseY} r={active ? 4.5 : 3.5} fill={mk.color} />
+                  <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={1.6} strokeDasharray="3 4" />
+                  {active && <line key={'f' + flashKey} className="mk-flash" x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeLinecap="round" />}
+                  <circle cx={mk.x} cy={baseY} r={3.5} fill={mk.color} />
                   {L &&
                     (L.active ? (
                       <g>

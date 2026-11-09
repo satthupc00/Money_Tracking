@@ -110,6 +110,12 @@ svg.ic { width: 18px; height: 18px; flex: 0 0 auto; }
 .stack-legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .stack-legend i { width: 8px; height: 8px; border-radius: 2px; }
 .stack-legend b { font-weight: 700; color: #fff; }
+.mk-flash { stroke-width: 0; opacity: 0; animation: mkFlash 0.7s var(--ease-out); }
+@keyframes mkFlash {
+  0% { stroke-width: 1.6; opacity: 0.4; }
+  35% { stroke-width: 7; opacity: 0.95; filter: brightness(1.6) drop-shadow(0 0 6px currentColor); }
+  100% { stroke-width: 1.6; opacity: 0; }
+}
 .chart-hint { font-size: 10.5px; color: #6b707a; text-align: right; margin-top: 2px; }
 
 /* ===== bảng chi tiết ===== */
