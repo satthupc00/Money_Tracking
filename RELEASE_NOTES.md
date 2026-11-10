@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.4.0
+
+**Chế độ phóng to biểu đồ + xem nhiều sổ đáo hạn cùng ngày.**
+
+- Nút phóng to ở góc thẻ biểu đồ: ẩn tạm các phần khác, biểu đồ chiếm toàn màn hình (PC giữ lại thanh tiêu đề). Bấm lại nút, phím Back (Android) hoặc Esc (PC) để trở về.
+- Bấm vào vạch có nhiều sổ tiết kiệm đáo hạn cùng ngày: hiện tất cả các sổ của ngày đó trong 1 khung (tên + tiền lãi từng sổ, ngày đáo hạn ở dưới).
+- Sửa lỗi: khung biểu đồ đổi kích thước (phóng to, gập/mở Fold, kéo cửa sổ PC) không còn làm trôi đoạn thời gian đang xem.
+
 ## v2.3.5
 
 **Bấm vào vạch sổ tiết kiệm gọn gàng hơn.**

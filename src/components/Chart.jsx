@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { formatShort } from '../finance.js';
-import { LineChart, BarChart3, Layers } from 'lucide-react';
+import { LineChart, BarChart3, Layers, Maximize2, Minimize2 } from 'lucide-react';
 import { lsGet, lsGetJSON, lsSet } from '../platform.js';
 
 // ---- Hằng số biểu đồ (giữ nguyên cảm giác zoom/kéo của bản cũ) ----
@@ -59,7 +59,7 @@ const MODES = [
   { key: 'stack', Icon: Layers, label: 'Cột chồng theo mục' },
 ];
 
-export default function Chart({ months, values, stacks = null, markers = [], goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
+export default function Chart({ months, values, stacks = null, markers = [], focus = false, onToggleFocus, goal = 0, invertZoom = false, title = 'Biến động', pc = false, labelSize = 14 }) {
   const [mode, setMode] = useState(() => {
     const m = lsGet('mmt-chart-mode');
     return MODES.some((x) => x.key === m) ? m : 'line';
@@ -88,6 +88,19 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
   const [bouncing, setBouncing] = useState(false);
   const [animating, setAnimating] = useState(false); // chuyển mượt khi bấm chọn khoảng 1N/3N/Tất cả
   const needsDefaultPanRef = useRef(!savedRef.current);
+
+  // khung biểu đồ đổi bề rộng (phóng to, gập/mở Fold, kéo cửa sổ) -> giữ nguyên đoạn thời gian đang xem
+  // (lần đo đầu tiên từ kích thước tạm 240px sang kích thước thật thì bỏ qua)
+  const prevWidthRef = useRef(null);
+  useEffect(() => {
+    const prev = prevWidthRef.current;
+    prevWidthRef.current = plotWidth;
+    if (prev === null) {
+      prevWidthRef.current = plotWidth === 240 ? null : plotWidth;
+      return;
+    }
+    if (prev !== plotWidth) setPanX((p) => p * (plotWidth / prev));
+  }, [plotWidth]);
 
   useEffect(() => {
     lsSet(CHART_VIEW_STORAGE_KEY, JSON.stringify({ scaleX, panX, scaleY, panYValue }));
@@ -595,19 +608,25 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
     const viewL = -panX;
     const viewR = -panX + plotWidth;
     const fmtD = (mk) => `${String(mk.day).padStart(2, '0')}/${String(mk.month).padStart(2, '0')}/${mk.year}`;
+    // các sổ đáo hạn CÙNG NGÀY với sổ đang chọn -> gom chung 1 khung
+    const act = markerLines.find((m) => m.id === activeMarker);
+    const sameDay = (m) => act && m.year === act.year && m.month === act.month && m.day === act.day;
+    const group = act ? markerLines.filter(sameDay) : [];
     const vis = markerLines
       .filter((mk) => mk.x >= viewL - 2 && mk.x <= viewR + 2)
+      .filter((mk) => !(sameDay(mk) && mk.id !== activeMarker)) // đã nằm trong khung chung
       .map((mk) => {
         const active = mk.id === activeMarker;
         const amt = '+' + formatShort(mk.interest);
         const date = fmtD(mk);
+        const members = active ? group.map((g) => ({ ...g, amt: '+' + formatShort(g.interest) })) : null;
         const w = active
-          ? Math.max(measureTextWidth(mk.short, `700 13px ${FONT}`), measureTextWidth(amt, `800 13px ${FONT}`), measureTextWidth(date, `600 11px ${FONT}`)) + 18
+          ? Math.max(measureTextWidth(date, `600 11px ${FONT}`), ...members.map((g) => Math.max(measureTextWidth(g.short, `700 13px ${FONT}`), measureTextWidth(g.amt, `800 13px ${FONT}`)))) + 18
           : Math.max(measureTextWidth(mk.short, `700 11px ${FONT}`), measureTextWidth(amt, `800 11px ${FONT}`)) + 6;
-        const h = active ? 58 : 28;
+        const h = active ? members.length * 34 + 24 : 28;
         // canh giữa vạch, nhưng không cho lòi ra ngoài khung nhìn
         const cx = Math.min(Math.max(mk.x, viewL + w / 2 + 2), viewR - w / 2 - 2);
-        return { ...mk, active, amt, date, w, h, cx, x0: cx - w / 2, x1: cx + w / 2 };
+        return { ...mk, active, members, amt, date, w, h, cx, x0: cx - w / 2, x1: cx + w / 2 };
       })
       .sort((a, b) => (a.active ? -1 : b.active ? 1 : a.x - b.x));
     const placed = [];
@@ -627,6 +646,10 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
       }
     });
     return out;
+  })();
+  const activeIds = (() => {
+    const act = markerLines.find((m) => m.id === activeMarker);
+    return new Set(act ? markerLines.filter((m) => m.year === act.year && m.month === act.month && m.day === act.day).map((m) => m.id) : []);
   })();
   const goalY = goal > 0 ? yOf(goal) : null;
   const showGoal = goalY !== null && goalY >= padT - 2 && goalY <= baseY;
@@ -650,6 +673,11 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
             </button>
           ))}
         </div>
+        {onToggleFocus && (
+          <button className={'ibtn focus-btn' + (focus ? ' on' : '')} onClick={onToggleFocus} title={focus ? 'Thu nhỏ biểu đồ (Esc)' : 'Phóng to biểu đồ, ẩn các phần khác'} aria-label={focus ? 'Thu nhỏ biểu đồ' : 'Phóng to biểu đồ'}>
+            {focus ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
+        )}
       </div>
       <div className="chart-row">
         <div className="chart-axis" style={{ width: axisWidth }}>
@@ -698,7 +726,7 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
             )}
             {markerLines.map((mk) => {
               const L = markerLayout[mk.id]; // undefined = bị ẩn vì chồng lấn
-              const active = activeMarker === mk.id;
+              const active = activeIds.has(mk.id);
               return (
                 <g key={mk.id} style={{ pointerEvents: 'none' }}>
                   <line x1={mk.x} x2={mk.x} y1={padT - 6} y2={baseY} stroke={mk.color} strokeWidth={1.6} strokeDasharray="3 4" />
@@ -707,14 +735,18 @@ export default function Chart({ months, values, stacks = null, markers = [], goa
                   {L &&
                     (L.active ? (
                       <g>
-                        <rect x={L.x0} y={L.y0} width={L.w} height={L.h} rx={8} fill="rgba(10,11,13,.9)" stroke={mk.color} strokeWidth={1.2} />
-                        <text x={L.cx} y={L.y0 + 18} fontSize={13} fontWeight={700} fill={mk.color} textAnchor="middle">
-                          {mk.short}
-                        </text>
-                        <text className="money" x={L.cx} y={L.y0 + 35} fontSize={13} fontWeight={800} fill={mk.color} textAnchor="middle">
-                          {L.amt}
-                        </text>
-                        <text x={L.cx} y={L.y0 + 50} fontSize={11} fontWeight={600} fill="#C9CDD4" textAnchor="middle">
+                        <rect x={L.x0} y={L.y0} width={L.w} height={L.h} rx={8} fill="rgba(10,11,13,.9)" stroke={L.members.length > 1 ? '#6B707A' : mk.color} strokeWidth={1.2} />
+                        {L.members.map((g, gi) => (
+                          <g key={g.id}>
+                            <text x={L.cx} y={L.y0 + 18 + gi * 34} fontSize={13} fontWeight={700} fill={g.color} textAnchor="middle">
+                              {g.short}
+                            </text>
+                            <text className="money" x={L.cx} y={L.y0 + 35 + gi * 34} fontSize={13} fontWeight={800} fill={g.color} textAnchor="middle">
+                              {g.amt}
+                            </text>
+                          </g>
+                        ))}
+                        <text x={L.cx} y={L.y0 + L.members.length * 34 + 16} fontSize={11} fontWeight={600} fill="#C9CDD4" textAnchor="middle">
                           {L.date}
                         </text>
                       </g>

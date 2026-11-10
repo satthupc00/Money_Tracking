@@ -12,7 +12,7 @@ import {
   MONTHS, TOTAL_CATEGORY, UNIT_MULTIPLIER, DEFAULT_GOAL, REAL_CURRENT_YEAR, REAL_CURRENT_MONTH,
   categoriesFor, totalFor, buildTimeline, calcSaving, parseDate, setCategoryOrder, computeSummary, formatShort, formatPct, currency, catColor,
 } from './finance.js';
-import { isNativeApp, isElectron, lsGet, lsSet, lsGetJSON, hashSecret, legacyHash, checkForUpdate, installUpdate } from './platform.js';
+import { isNativeApp, isElectron, lsGet, lsSet, lsGetJSON, pushBackHandler, hashSecret, legacyHash, checkForUpdate, installUpdate } from './platform.js';
 import { APP_VERSION } from './config.js';
 import * as sync from './sync.js';
 import { SEED_DATA as DEMO_DATA, SEED_CATEGORIES_BY_YEAR as DEMO_CATEGORIES_BY_YEAR } from './seedData.js';
@@ -98,6 +98,7 @@ export default function App() {
   });
   const [year, setYear] = useState(REAL_CURRENT_YEAR);
   const [tab, setTab] = useState('overview');
+  const [focus, setFocus] = useState(false); // chế độ chỉ xem biểu đồ, ẩn tạm các phần khác
   const [privacy, setPrivacy] = useState(() => lsGet('mmt-privacy') === '1');
   const [invertZoom, setInvertZoom] = useState(() => lsGet(INVERT_ZOOM_KEY) === 'on');
   const [toast, setToast] = useState('');
@@ -519,6 +520,17 @@ export default function App() {
   const syncTitle = { synced: 'Đã đồng bộ', pending: 'Đang đồng bộ…', error: 'Lỗi đồng bộ', local: 'Chưa đăng nhập · chỉ lưu trên máy' }[syncStatus] + (user ? ' · ' + user.email : '');
   const goYear = (d) => setYear((y) => y + d);
 
+  useEffect(() => {
+    if (!focus) return;
+    const k = (e) => e.key === 'Escape' && !modal && setFocus(false);
+    window.addEventListener('keydown', k);
+    const removeBack = pushBackHandler(() => setFocus(false));
+    return () => {
+      window.removeEventListener('keydown', k);
+      removeBack();
+    };
+  }, [focus, modal]);
+
   // ---------------- phím tắt PC ----------------
   useEffect(() => {
     if (!pc) return;
@@ -633,7 +645,7 @@ export default function App() {
   );
   const ChartCard = (
     <div className="card fx-rise" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', animationDelay: '120ms' }}>
-      <Chart months={timeline.months} values={timeline.values} stacks={stacks} markers={savingMarkers} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
+      <Chart months={timeline.months} values={timeline.values} stacks={stacks} markers={savingMarkers} focus={focus} onToggleFocus={() => setFocus((f) => !f)} goal={goal} invertZoom={invertZoom} pc={pc} labelSize={pc ? 13 : 14} title={pc ? 'Biến động tổng tài sản' : 'Biến động'} />
     </div>
   );
   const editRequest = (key, m) => {
@@ -978,9 +990,19 @@ export default function App() {
     }
   }
 
+  // chế độ phóng to biểu đồ: chỉ còn thẻ biểu đồ chiếm toàn màn hình
+  if (focus && summary && !pc) {
+    body = (
+      <div className="focus-wrap">
+        {ChartCard}
+        <div className="credit" style={{ textAlign: 'right' }}>Created by Mondiro</div>
+      </div>
+    );
+  }
+
   const sheet = !pc;
   return (
-    <div className={`app mode-${mode}${privacy ? ' priv' : ''}`}>
+    <div className={`app mode-${mode}${privacy ? ' priv' : ''}${focus ? ' focus' : ''}`}>
       {body}
 
       {modal?.type === 'cell' && (

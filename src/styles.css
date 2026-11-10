@@ -116,6 +116,15 @@ svg.ic { width: 18px; height: 18px; flex: 0 0 auto; }
   35% { stroke-width: 7; opacity: 0.95; filter: brightness(1.6) drop-shadow(0 0 6px currentColor); }
   100% { stroke-width: 1.6; opacity: 0; }
 }
+.focus-btn { width: 32px; height: 32px; border-radius: 8px; flex: 0 0 auto; }
+.focus-btn.on { color: var(--red); background: var(--selected-bg); }
+.focus-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: calc(var(--safe-top) + 8px) 8px calc(var(--safe-bottom) + 6px); animation: rise 0.3s var(--ease-out); }
+.focus-wrap .card { flex: 1; }
+/* PC: giữ thanh tiêu đề (kéo cửa sổ), chỉ ẩn thanh bên + bảng chi tiết */
+.mode-pc.focus .pc-body { grid-template-columns: minmax(0, 1fr); }
+.mode-pc.focus .side { display: none; }
+.mode-pc.focus .main { grid-template-rows: minmax(0, 1fr); }
+.mode-pc.focus .main > .card:nth-child(2) { display: none !important; }
 .chart-hint { font-size: 10.5px; color: #6b707a; text-align: right; margin-top: 2px; }
 
 /* ===== bảng chi tiết ===== */
