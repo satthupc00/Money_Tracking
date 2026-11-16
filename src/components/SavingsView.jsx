@@ -22,7 +22,9 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
   const [amount, setAmount] = useState(book ? fmtInput(String(book.amount)) : '');
   const [start, setStart] = useState(book?.start || todayISO());
   const [end, setEnd] = useState(book?.end || addMonths(todayISO(), 6));
-  // kỳ hạn (tháng): nhập ngày kết thúc + số tháng -> tự tính ngày mở sổ
+  // Kỳ hạn (tháng) + 1 trong 2 ngày -> tự điền ngày còn lại.
+  // anchor = ngày người dùng vừa nhập ('start' | 'end'); đổi kỳ hạn thì tính lại ngày kia theo anchor.
+  const [anchor, setAnchor] = useState('end');
   const [term, setTerm] = useState(() => {
     if (!book) return '6';
     for (let n = 1; n <= 120; n++) if (addMonths(book.start, n) === book.end) return String(n);
@@ -30,14 +32,23 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
   });
   const changeEnd = (v) => {
     setEnd(v);
+    setAnchor('end');
     const n = parseInt(term, 10);
     if (v && n > 0) setStart(addMonths(v, -n));
+  };
+  const changeStart = (v) => {
+    setStart(v);
+    setAnchor('start');
+    const n = parseInt(term, 10);
+    if (v && n > 0) setEnd(addMonths(v, n));
   };
   const changeTerm = (v) => {
     const t = String(v).replace(/\D/g, '').slice(0, 3);
     setTerm(t);
     const n = parseInt(t, 10);
-    if (end && n > 0) setStart(addMonths(end, -n));
+    if (!(n > 0)) return;
+    if (anchor === 'start' && start) setEnd(addMonths(start, n));
+    else if (end) setStart(addMonths(end, -n));
   };
   const [rate, setRate] = useState(book ? String(book.rate).replace('.', ',') : '');
   const [confirmDel, setConfirmDel] = useState(false);
@@ -58,14 +69,18 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
       </label>
       <div className="row">
         <label className="sv-f">
-          <span>Ngày kết thúc (đáo hạn)</span>
-          <input className="inp num" type="date" value={end} onChange={(e) => changeEnd(e.target.value)} />
+          <span>Ngày mở sổ {term && anchor === 'end' ? '· tự tính' : ''}</span>
+          <input className={'inp num' + (term && anchor === 'end' ? ' sv-auto' : '')} type="date" value={start} onChange={(e) => changeStart(e.target.value)} />
         </label>
-        <label className="sv-f" style={{ flex: '0 0 110px' }}>
-          <span>Kỳ hạn (tháng)</span>
-          <input className="inp num" inputMode="numeric" value={term} placeholder="6" onChange={(e) => changeTerm(e.target.value)} />
+        <label className="sv-f">
+          <span>Ngày kết thúc {term && anchor === 'start' ? '· tự tính' : ''}</span>
+          <input className={'inp num' + (term && anchor === 'start' ? ' sv-auto' : '')} type="date" value={end} onChange={(e) => changeEnd(e.target.value)} />
         </label>
       </div>
+      <label className="sv-f">
+        <span>Số tháng gửi</span>
+        <input className="inp num" inputMode="numeric" value={term} placeholder="6" onChange={(e) => changeTerm(e.target.value)} />
+      </label>
       <div className="opt-row">
         {TERMS.map((t) => (
           <button key={t} className={'chip' + (term === String(t) ? ' on' : '')} onClick={() => changeTerm(t)}>
@@ -73,18 +88,9 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
           </button>
         ))}
       </div>
-      <label className="sv-f">
-        <span>Ngày mở sổ {term ? '(tự tính từ ngày kết thúc − kỳ hạn)' : ''}</span>
-        <input
-          className="inp num"
-          type="date"
-          value={start}
-          onChange={(e) => {
-            setStart(e.target.value);
-            setTerm(''); // tự sửa ngày mở sổ -> không còn theo kỳ hạn tròn tháng
-          }}
-        />
-      </label>
+      <div className="muted" style={{ fontSize: 11, marginTop: -4 }}>
+        Nhập 1 trong 2 ngày + số tháng gửi, ngày còn lại tự điền.
+      </div>
       <label className="sv-f">
         <span>Lãi suất (%/năm)</span>
         <input className="inp num" inputMode="decimal" value={rate} placeholder="Ví dụ: 5,2" onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, ''))} />

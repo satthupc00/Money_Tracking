@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.4.2
+
+**Sổ tiết kiệm: nhập ngày nào cũng được, ngày còn lại tự điền.**
+
+- Nhập Ngày mở sổ hoặc Ngày kết thúc (1 trong 2) + Số tháng gửi → ngày còn lại tự điền.
+- Đổi số tháng gửi: ngày còn lại tự tính lại theo ngày bạn vừa nhập.
+- Ô được tự điền có viền xanh và ghi "· tự tính" để dễ nhận biết.
+
 ## v2.4.1
 
 **Sổ tiết kiệm: nút con mắt tính / không tính vào tổng.**

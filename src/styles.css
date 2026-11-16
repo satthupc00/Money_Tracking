@@ -422,3 +422,5 @@ kbd { font: 11px 'Segoe UI', sans-serif; background: var(--chrome); box-shadow: 
 .sv-card.excluded { opacity: 0.55; }
 .sv-card.excluded:hover { opacity: 0.8; }
 .sv-ex-note { font-size: 11px; color: var(--warn); }
+
+.sv-auto { box-shadow: inset 0 0 0 1px rgba(61, 220, 138, 0.45); color: var(--green); }
