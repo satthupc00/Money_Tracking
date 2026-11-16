@@ -416,3 +416,9 @@ kbd { font: 11px 'Segoe UI', sans-serif; background: var(--chrome); box-shadow: 
 .sv-f { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .sv-f > span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
 .sv-f input[type='date'] { color-scheme: dark; }
+.sv-eye { width: 32px; height: 32px; border-radius: 8px; margin: -6px -6px -6px 0; color: var(--text); }
+.sv-eye.off { color: #6b707a; }
+.sv-card { cursor: pointer; }
+.sv-card.excluded { opacity: 0.55; }
+.sv-card.excluded:hover { opacity: 0.8; }
+.sv-ex-note { font-size: 11px; color: var(--warn); }

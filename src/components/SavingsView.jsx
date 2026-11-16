@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, PiggyBank, CalendarDays, Trash2 } from 'lucide-react';
+import { Plus, PiggyBank, CalendarDays, Trash2, Eye, EyeOff } from 'lucide-react';
 import { calcSaving, formatDate, formatShort, currency } from '../finance.js';
 import { Overlay } from './Modals.jsx';
 
@@ -129,7 +129,7 @@ function SavingEditor({ book, onSave, onDelete, onClose, sheet }) {
           <button className="btn" onClick={onClose}>
             Huỷ
           </button>
-          <button className="btn-red" disabled={!!err} onClick={() => onSave({ ...draft, name: name.trim(), id: book?.id || 'sv' + Date.now().toString(36) })}>
+          <button className="btn-red" disabled={!!err} onClick={() => onSave({ ...draft, name: name.trim(), id: book?.id || 'sv' + Date.now().toString(36), ...(book?.excluded ? { excluded: true } : {}) })}>
             Lưu sổ
           </button>
         </div>
@@ -154,7 +154,10 @@ export default function SavingsView({ savings, onChange, sheet }) {
         .sort((x, y) => (x.r.matured - y.r.matured) || x.b.end.localeCompare(y.b.end)),
     [savings]
   );
-  const active = rows.filter((x) => !x.r.matured);
+  const active = rows.filter((x) => !x.r.matured && !x.b.excluded); // sổ tắt con mắt: không tính vào tổng (vẫn vẽ trên biểu đồ)
+  const hiddenCount = rows.filter((x) => !x.r.matured && x.b.excluded).length;
+  const toggleExcluded = (id) =>
+    onChange(savings.map((x) => (x.id === id ? (x.excluded ? (({ excluded, ...rest }) => rest)(x) : { ...x, excluded: true }) : x)));
   const sum = (arr, k) => arr.reduce((s, x) => s + (k === 'amount' ? Number(x.b.amount) || 0 : x.r[k]), 0);
 
   return (
@@ -165,7 +168,7 @@ export default function SavingsView({ savings, onChange, sheet }) {
           <PiggyBank size={18} color="var(--red)" />
           <b>Sổ tiết kiệm</b>
           <span className="muted num" style={{ marginLeft: 'auto', fontSize: 12 }}>
-            {active.length} sổ đang gửi
+            {active.length} sổ đang tính{hiddenCount ? ` · ${hiddenCount} sổ không tính` : ''}
           </span>
         </div>
         <div className="sv-kpis num">
@@ -187,11 +190,30 @@ export default function SavingsView({ savings, onChange, sheet }) {
       </div>
       <div className="sv-list">
         {rows.map(({ b, r }) => (
-          <button key={b.id} className={'card sv-card' + (r.matured ? ' done' : '')} onClick={() => setEditing(b)}>
+          <div
+            key={b.id}
+            role="button"
+            tabIndex={0}
+            className={'card sv-card' + (r.matured ? ' done' : '') + (b.excluded ? ' excluded' : '')}
+            onClick={() => setEditing(b)}
+            onKeyDown={(e) => e.key === 'Enter' && setEditing(b)}
+          >
             <div className="sv-c-h">
               <b className="n">{b.name}</b>
               <span className={'sv-badge' + (r.matured ? ' done' : '')}>{r.matured ? 'Đã đáo hạn' : `Còn ${r.remaining} ngày`}</span>
+              <button
+                className={'ibtn sv-eye' + (b.excluded ? ' off' : '')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExcluded(b.id);
+                }}
+                title={b.excluded ? 'Đang KHÔNG tính vào tổng lãi · bấm để tính lại' : 'Đang tính vào tổng lãi · bấm để bỏ ra'}
+                aria-label={b.excluded ? 'Tính sổ này vào tổng' : 'Không tính sổ này vào tổng'}
+              >
+                {b.excluded ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
             </div>
+            {b.excluded && <div className="sv-ex-note">Không tính vào tổng lãi · vẫn hiện trên biểu đồ</div>}
             <div className="sv-c-amt num">
               <b className="money">{currency(Number(b.amount))} đ</b>
               <span className="muted"> · {String(b.rate).replace('.', ',')}%/năm</span>
@@ -222,7 +244,7 @@ export default function SavingsView({ savings, onChange, sheet }) {
                 <b className="money">{currency(r.total)} đ</b>
               </div>
             </div>
-          </button>
+          </div>
         ))}
         {rows.length === 0 && (
           <div className="muted" style={{ textAlign: 'center', padding: 20 }}>

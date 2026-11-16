@@ -2,6 +2,14 @@
 
 Mỗi bản phát hành có 1 mục `## vX.Y.Z` bên dưới. Khi đẩy lên nhánh main, nội dung mục đúng phiên bản sẽ thành bảng thông báo trên GitHub Releases.
 
+## v2.4.1
+
+**Sổ tiết kiệm: nút con mắt tính / không tính vào tổng.**
+
+- Mỗi sổ có nút con mắt ở góc phải. Tắt con mắt: sổ đó không được cộng vào Tổng tiền gửi, Tổng lãi sẽ nhận và Lãi TB/ngày.
+- Sổ bị tắt hiện mờ đi kèm dòng ghi chú, nhưng vẫn được vẽ vạch đáo hạn trên biểu đồ như bình thường.
+- Trạng thái con mắt được đồng bộ giữa các máy.
+
 ## v2.4.0
 
 **Chế độ phóng to biểu đồ + xem nhiều sổ đáo hạn cùng ngày.**
